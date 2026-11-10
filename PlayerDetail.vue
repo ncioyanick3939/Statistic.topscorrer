@@ -47,7 +47,6 @@ const facts = computed(() => {
   return a
 })
 
-const showWhy = ref(false)
 const showOwn = ref(false)
 const form2 = reactive({ avg: state.user[p.value.id]?.avg ?? '', mv: state.user[p.value.id]?.mv ?? '', trend: state.user[p.value.id]?.trend || '', toi: state.user[p.value.id]?.toi ?? '' })
 function save() {
@@ -81,6 +80,19 @@ function save() {
     <p>{{ r.out }}</p>
   </section>
 
+  <section v-if="x.w.max != null" class="card">
+    <h2>Preis im Topscorer-Spiel</h2>
+    <div class="big"><b class="num">{{ fmt(x.w.max) }}</b><span>Höchstpreis, den ich zahlen würde</span></div>
+    <p v-if="x.w.mv" :class="['note', x.w.call === 'sell' ? 'bad' : x.w.call === 'cheap' ? 'good' : 'mid']">
+      Im Spiel kostet er {{ fmt(x.w.mv) }}.
+      <template v-if="x.w.call === 'sell'">Das ist zu viel, ein Verkauf lohnt sich.</template>
+      <template v-else-if="x.w.call === 'cheap'">Das ist günstig, behalten oder kaufen.</template>
+      <template v-else>Das ist ein fairer Preis.</template>
+    </p>
+    <p v-else class="muted">Kaufen, wenn er im Spiel weniger kostet. Darüber zahlst du für Punkte, die er nicht bringt.</p>
+    <p class="small muted">Gerechnet mit einem Spiel-Schnitt von {{ x.w.avg }} Punkten<template v-if="x.w.est"> (aus der Statistik geschätzt, kann um rund 20 danebenliegen)</template><template v-else> (dein Wert, angepasst an Form und Verletzung)</template>. Ein Punkt Ø kostet im Spiel etwa {{ fmt(x.w.price) }}.</p>
+  </section>
+
   <section v-if="fc.games.length && !fc.inj" class="card">
     <h2>Nächste Spiele</h2>
     <ForecastGames :games="fc.games" :goalie="goalie" />
@@ -111,18 +123,6 @@ function save() {
   </section>
 
   <section class="card">
-    <button type="button" class="link" @click="showWhy = !showWhy">{{ showWhy ? 'Rechnung ausblenden' : 'Wie kommt die Note zustande?' }}</button>
-    <div v-if="showWhy" class="why">
-      <p class="small muted">Die Note ist der Anteil der erreichten Punkte an allen möglichen. Jede Zeile zeigt den Wert des Spielers und was er daraus holt.</p>
-      <ul class="parts">
-        <li v-for="x in r.parts" :key="x[0]">
-          <div class="l"><b>{{ x[0] }}</b><span class="muted small">{{ x[3] }}</span></div>
-          <span class="chip" :class="x[2] >= 0.65 ? 'good' : x[2] >= 0.35 ? 'mid' : 'bad'">{{ x[2] >= 0.65 ? 'stark' : x[2] >= 0.35 ? 'solide' : 'schwach' }}</span>
-          <span class="pts num"><b>{{ Math.round(x[1] * x[2]) }}</b> von {{ x[1] }}</span>
-        </li>
-      </ul>
-      <div class="sum"><span>Summe</span><b class="num">{{ Math.round(r.parts.reduce((s, x) => s + x[1] * x[2], 0)) }} von {{ r.parts.reduce((s, x) => s + x[1], 0) }} = Note {{ r.score }}</b></div>
-    </div>
     <button type="button" class="link" @click="showOwn = !showOwn">{{ showOwn ? 'Eingabe ausblenden' : 'Marktwert und Punkteschnitt aus dem Spiel eintragen' }}</button>
     <div v-if="showOwn" class="own">
       <div><label for="u-avg">Ø Punkte</label><input id="u-avg" type="number" min="0" step="1" v-model="form2.avg" :placeholder="r.f.avg ?? ''" /></div>
@@ -159,13 +159,6 @@ function save() {
 .marks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
 .marks li { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: start; }
 .marks i { font-style: normal; font-weight: 800; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; }
-.why { display: flex; flex-direction: column; gap: 10px; }
-.parts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.parts li { display: grid; grid-template-columns: 1fr auto 88px; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
-.parts .l { display: flex; flex-direction: column; min-width: 0; }
-.parts .pts { text-align: right; font-size: 0.85rem; color: var(--muted); }
-.parts .pts b { font-family: var(--head); font-size: 1.15rem; color: var(--ink); }
-.sum { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-top: 2px solid var(--ink); padding-top: 10px; font-weight: 700; }
 .own { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .full { grid-column: 1 / -1; }
 @media (max-width: 440px) { .facts { grid-template-columns: 1fr 1fr; } .big b { font-size: 2.8rem; } }

@@ -2,10 +2,13 @@
 import { computed } from 'vue'
 import { TEAMS } from './data.js'
 import { openPlayer } from './store.js'
-const props = defineProps({ x: Object })
+const props = defineProps({ x: Object, price: Boolean })
+const k = (n) => (n == null ? '–' : Math.round(n / 1000) + 'k')
+const CALL = { sell: 'überbezahlt', cheap: 'günstig', fair: 'fairer Preis' }
 const t = computed(() => TEAMS[props.x.p.team])
 const next = computed(() => {
   const fc = props.x.fc
+  if (props.price) return [k(props.x.w.max), props.x.w.mv ? 'Spiel ' + k(props.x.w.mv) : 'Höchstpreis']
   if (fc.inj) return ['out', 'verletzt']
   return fc.type === 'G' ? [fc.next.ga.toFixed(1), 'Gegentore/Sp.'] : [fc.next.pts.toFixed(1), 'Punkte']
 })
@@ -14,7 +17,7 @@ const next = computed(() => {
 <template>
   <button type="button" class="row" @click="openPlayer(x.p.id)">
     <span class="dot" :style="{ background: t[1], color: t[2] }">{{ x.p.team.slice(0, 3) }}</span>
-    <span class="who"><b>{{ x.p.name }}</b><span class="muted small">{{ t[0] }} · {{ x.p.pos === 'F' ? 'Stürmer' : x.p.pos === 'D' ? 'Verteidiger' : 'Torhüter' }}</span></span>
+    <span class="who"><b>{{ x.p.name }}</b><span class="muted small"><template v-if="price && x.w.call">{{ CALL[x.w.call] }} · </template>{{ t[0] }} · {{ x.p.pos === 'F' ? 'Stürmer' : x.p.pos === 'D' ? 'Verteidiger' : 'Torhüter' }}</span></span>
     <span class="fc num"><b>{{ next[0] }}</b><span class="small muted">{{ next[1] }}</span></span>
     <span class="chip" :class="x.r.cls">{{ x.r.score }}</span>
   </button>

@@ -2,7 +2,7 @@
 import { reactive, computed } from 'vue'
 import baseData from './stats.json'
 import { MY_SQUAD } from './data.js'
-import { buildContext, rate, forecast, iso, chDate } from './model.js'
+import { buildContext, rate, forecast, buildValueModel, iso, chDate } from './model.js'
 import { readExport } from './importers.js'
 
 const local = {
@@ -24,11 +24,14 @@ export const state = reactive({
 })
 
 export const ctx = computed(() => buildContext(state.data))
-export const rated = computed(() => ctx.value.players.map((p) => ({ p, r: rate(p, ctx.value, state.user), fc: forecast(p, ctx.value, state.user) })))
+const rated0 = computed(() => ctx.value.players.map((p) => ({ p, r: rate(p, ctx.value, state.user), fc: forecast(p, ctx.value, state.user) })))
+export const rated = computed(() => { const vm = buildValueModel(rated0.value, ctx.value, state.user); return rated0.value.map((x) => ({ ...x, w: vm(x) })) })
 const ratedById = computed(() => { const m = {}; rated.value.forEach((x) => (m[x.p.id] = x)); return m })
 const byScore = computed(() => rated.value.slice().sort((a, b) => b.r.score - a.r.score))
 export const mySquad = computed(() => byScore.value.filter((x) => MY_SQUAD[x.p.id]))
 export const hotList = computed(() => rated.value.filter((x) => x.fc.type === 'S').sort((a, b) => b.fc.next.pts - a.fc.next.pts).slice(0, 10))
+export const buyList = computed(() => rated.value.filter((x) => x.w.avg != null && !MY_SQUAD[x.p.id] && !x.fc.inj && x.p.gp >= 8 && x.p.pos !== 'G').sort((a, b) => b.w.avg - a.w.avg).slice(0, 10))
+export const sellList = computed(() => rated.value.filter((x) => MY_SQUAD[x.p.id] && x.w.call === 'sell').sort((a, b) => (b.w.mv - b.w.max) - (a.w.mv - a.w.max)))
 export const current = computed(() => (state.current && ratedById.value[state.current]) || null)
 export const hits = computed(() => {
   const v = state.query.trim().toLowerCase()

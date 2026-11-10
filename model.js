@@ -224,3 +224,47 @@ export function rate(p, ctx, user) {
   const verdict = score >= 65 ? 'Lohnt sich' : score >= 45 ? 'Beobachten' : 'Lohnt sich weniger'
   return { score, parts, plus, minus, out, cls, verdict, ratio, f }
 }
+
+// Preis: Was darf ein Spieler im Topscorer-Spiel höchstens kosten?
+// Grundlage: Im Spiel kostet ein Punkt Ø rund gleich viel (aus deinem Kader abgelesen).
+// Wer seinen Spiel-Schnitt nicht kennt, bekommt ihn aus seiner Statistik geschätzt (aus den Spielern, die du kennst).
+const median = (a) => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : 0 }
+function line(pts) {
+  const n = pts.length
+  const mx = pts.reduce((s, q) => s + q[0], 0) / n
+  const my = pts.reduce((s, q) => s + q[1], 0) / n
+  const vx = pts.reduce((s, q) => s + (q[0] - mx) ** 2, 0)
+  const b = vx ? pts.reduce((s, q) => s + (q[0] - mx) * (q[1] - my), 0) / vx : 0
+  return { a: my - b * mx, b }
+}
+const skill = (x) => x.fc.gRate * (x.p.pos === 'D' ? 70 : 60) + x.fc.aRate * 40
+
+export function buildValueModel(list, ctx, user) {
+  const known = list.filter((x) => fantasy(x.p, user).avg != null && x.p.gp >= 5)
+  const price = median(known.filter((x) => fantasy(x.p, user).mv && x.p.gp >= 12).map((x) => fantasy(x.p, user).mv / fantasy(x.p, user).avg)) || 6200
+  const fit = {}
+  ;['F', 'D'].forEach((pos) => {
+    const pts = known.filter((x) => x.p.pos === pos && x.fc.type === 'S').map((x) => [skill(x), fantasy(x.p, user).avg])
+    fit[pos] = pts.length >= 4 ? line(pts) : null
+  })
+  const round = (v) => Math.round(v / 5000) * 5000
+  const fn = (x) => {
+    const f = fantasy(x.p, user)
+    let avg = f.avg
+    let est = false
+    if (avg == null) {
+      const l = fit[x.p.pos]
+      if (!l || x.fc.type !== 'S') return { avg: null, est: false, max: null, mv: f.mv, call: null, price }
+      avg = Math.max(15, Math.min(115, l.a + l.b * skill(x)))
+      est = true
+    } else if (x.fc.type === 'S' && x.p.gp >= 5 && x.fc.rawPg > 0) {
+      avg *= Math.max(0.85, Math.min(1.1, x.fc.expPg / x.fc.rawPg)) // wer über seinem Niveau läuft, verliert Schnitt
+    }
+    if (x.fc.inj) avg *= 0.5
+    const max = round(avg * price)
+    let call = null
+    if (f.mv) { const d = (f.mv - max) / max; call = d > 0.12 ? 'sell' : d < -0.12 ? 'cheap' : 'fair' }
+    return { avg: Math.round(avg), est, max, mv: f.mv, call, price }
+  }
+  return fn
+}

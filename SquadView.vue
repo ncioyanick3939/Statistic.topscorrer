@@ -6,9 +6,9 @@ import PlayerRow from './PlayerRow.vue'
 <template>
   <header>
     <h1>Mein Kader</h1>
-    <p class="muted small">Sortiert nach Note. Rechts die erwarteten Punkte der nächsten Spiele.</p>
+    <p class="muted small">Sortiert nach Note. Rechts der Höchstpreis, darunter der Preis im Spiel.</p>
   </header>
-  <div class="list"><PlayerRow v-for="x in mySquad" :key="x.p.id" :x="x" /></div>
+  <div class="list"><PlayerRow v-for="x in mySquad" :key="x.p.id" :x="x" price /></div>
 </template>
 
 <style scoped>
