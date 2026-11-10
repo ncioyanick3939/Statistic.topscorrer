@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { TEAMS, MY_SQUAD } from './data.js'
-import { state, days, activeDay, todayLineup, setCash, openPlayer } from './store.js'
+import { state, days, activeDay, todayLineup, setCash, openPlayer, stand } from './store.js'
 import { gameOn } from './team.js'
 import { ownedRated } from './store.js'
 import ImportShot from './ImportShot.vue'
@@ -16,6 +16,15 @@ const info = (x) => { const g = gameOn(x.p.team, activeDay.value); return g ? (g
 </script>
 
 <template>
+  <header class="view-heading">
+    <div>
+      <p class="eyebrow">DEIN TEAM · LIVE-ÜBERSICHT</p>
+      <h1>Team-Cockpit</h1>
+      <p class="small muted">Statistikstand {{ stand }}<span v-if="state.ai"> · KI-Coach bereit</span></p>
+    </div>
+    <span class="heading-mark" aria-hidden="true">🏒</span>
+  </header>
+
   <section class="card status" :class="minus ? 'bad' : 'good'">
     <div class="row">
       <div>
@@ -30,20 +39,30 @@ const info = (x) => { const g = gameOn(x.p.team, activeDay.value); return g ? (g
     <div class="edit"><label for="cash">Kontostand ändern</label><input id="cash" type="number" step="1000" :value="state.cash" @change="setCash($event.target.value)" /></div>
   </section>
 
-  <section>
-    <h2>Aufstellung</h2>
-    <p class="small muted">Die Zahl neben dem Datum zeigt, wie viele deiner Spieler an dem Tag spielen.</p>
-    <div class="chips" role="tablist">
-      <button v-for="d in days" :key="d" type="button" :class="{ on: activeDay === d }" @click="state.day = d">{{ dayLabel(d) }} <small>{{ playN(d) }}</small></button>
+  <section class="schedule-heading">
+    <div>
+      <p class="eyebrow">SPIELPLAN</p>
+      <h2>Aufstellung</h2>
     </div>
+    <p class="small muted">Spieler mit Match</p>
   </section>
+  <div class="chips" role="tablist" aria-label="Spieltag auswählen">
+    <button v-for="d in days" :key="d" type="button" :class="{ on: activeDay === d }" :aria-selected="activeDay === d" @click="state.day = d">{{ dayLabel(d) }} <small>{{ playN(d) }}</small></button>
+  </div>
 
-  <section class="card">
-    <p><b>{{ L.playing }} von 16</b> Spielern haben am {{ dayLabel(activeDay) }} ein Spiel. Erwartet: rund <b class="num">{{ Math.round(L.total) }}</b> Punkte, das sind etwa {{ fmt(L.total * 50) }} Franken.</p>
+  <section class="card lineup-card">
+    <div class="lineup-summary">
+      <div>
+        <p class="eyebrow">PUNKTE-PROGNOSE</p>
+        <b class="forecast-total num">{{ Math.round(L.total) }}</b>
+        <p class="small muted">{{ L.playing }} von 16 Spielern mit Spiel</p>
+      </div>
+      <div class="forecast-ring"><span>{{ Math.round(L.playing / 16 * 100) }}%</span><small>im Einsatz</small></div>
+    </div>
     <p v-if="missingN" class="bad warn"><b>Es fehlen {{ missingN }} Spieler</b> in der Aufstellung. Jede leere Position kostet 50 Punkte.</p>
     <p v-if="L.imports >= 6" class="small muted">Die Import-Grenze von 6 ist erreicht.</p>
     <template v-for="g in groups" :key="g.k">
-      <h3>{{ g.t }}</h3>
+      <h3 class="position-title">{{ g.t }} <span>{{ g.rows.length }} / {{ g.k === 'G' ? 1 : g.k === 'D' ? 6 : 9 }}</span></h3>
       <ul class="list">
         <li v-for="e in g.rows" :key="e.x.p.id" :class="{ off: e.v === 0 }">
           <button type="button" @click="openPlayer(e.x.p.id)">
@@ -54,39 +73,49 @@ const info = (x) => { const g = gameOn(x.p.team, activeDay.value); return g ? (g
       </ul>
     </template>
     <template v-if="L.bench.length">
-      <h3>Auf der Bank</h3>
+      <h3 class="position-title">Auf der Bank <span>{{ L.bench.length }}</span></h3>
       <ul class="list">
         <li v-for="e in L.bench" :key="e.x.p.id" class="off">
           <button type="button" @click="openPlayer(e.x.p.id)"><span class="nm"><b>{{ e.x.p.name }}</b><span class="muted small">{{ e.x.fc.inj ? 'verletzt' : info(e.x) }}</span></span><span class="v num">{{ e.v ? e.v : '–' }}</span></button>
         </li>
       </ul>
     </template>
-    <p class="small muted">Die Zahl rechts ist der Punkteschnitt pro Spiel aus dem Topscorer-Spiel, bei Formschwäche oder Verletzung angepasst. Wer nicht spielt, bekommt 0.</p>
+    <p class="small muted">Die Prognose basiert auf deinem Punkteschnitt, der Form und dem Spielplan. Wer nicht spielt, bekommt 0. Es handelt sich um eine Schätzung, keine Garantie.</p>
   </section>
 </template>
 
 <style scoped>
+.view-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.eyebrow { color: var(--accent); font-size: .68rem; font-weight: 850; letter-spacing: .14em; margin-bottom: 5px; }
+.heading-mark { width: 52px; height: 52px; flex: 0 0 52px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 16px; background: var(--surface-raised); font-size: 1.5rem; }
+.schedule-heading { display: flex; justify-content: space-between; align-items: end; gap: 12px; }
+.schedule-heading .small { text-align: right; }
 .status { gap: 10px; }
-.status.good { border-color: var(--good); background: var(--surface); }
-.status.bad { border-color: var(--bad); background: var(--surface); }
+.status.good { border-color: color-mix(in srgb, var(--good) 55%, var(--line)); background: var(--surface); }
+.status.bad { border-color: color-mix(in srgb, var(--bad) 55%, var(--line)); background: var(--surface); }
 .status .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .big { font-family: var(--head); font-size: 2.4rem; font-weight: 800; line-height: 1; display: block; }
 .status.bad .big { color: var(--bad); }
 .status.good .big { color: var(--good); }
 .lbl { color: var(--muted); font-weight: 700; }
-.status p.small { margin-bottom: 2px; }
-.status.good, .status.bad { color: var(--ink); }
 .edit { max-width: 220px; }
-.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-.chips button { border: 2px solid var(--line); background: var(--surface); border-radius: 12px; padding: 9px 14px; font-weight: 700; }
-.chips small { opacity: 0.7; margin-left: 4px; }
-.chips button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chips button { border: 1px solid var(--line); background: var(--surface-raised); border-radius: 12px; padding: 9px 12px; font-size: .86rem; font-weight: 750; }
+.chips small { opacity: .72; margin-left: 4px; }
+.chips button.on { background: rgba(101,213,232,.13); color: var(--accent); border-color: rgba(101,213,232,.42); }
+.lineup-card { gap: 16px; }
+.lineup-summary { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.forecast-total { display: block; color: var(--accent); font-family: var(--head); font-size: 3rem; line-height: 1; letter-spacing: -.05em; }
+.forecast-ring { width: 76px; height: 76px; flex: 0 0 76px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 5px solid rgba(101,213,232,.3); border-top-color: var(--accent); border-radius: 50%; }
+.forecast-ring span { font-family: var(--head); font-weight: 850; font-size: 1.1rem; }
+.forecast-ring small { color: var(--muted); font-size: .62rem; }
+.position-title { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+.position-title span { color: var(--muted); font-family: var(--body); font-size: .75rem; font-weight: 700; letter-spacing: 0; }
 .warn { padding: 10px 12px; border-radius: 12px; }
-h3 { font-size: 1.05rem; margin-top: 4px; }
 .list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .list li { border-top: 1px solid var(--line); }
 .list button { width: 100%; background: none; border: 0; padding: 11px 0; display: flex; justify-content: space-between; align-items: center; gap: 10px; text-align: left; }
 .nm { display: flex; flex-direction: column; min-width: 0; }
-.v { font-family: var(--head); font-size: 1.3rem; font-weight: 800; }
-li.off .nm b, li.off .v { opacity: 0.45; }
+.v { color: var(--accent); font-family: var(--head); font-size: 1.25rem; font-weight: 850; }
+li.off .nm b, li.off .v { opacity: .42; }
 </style>
