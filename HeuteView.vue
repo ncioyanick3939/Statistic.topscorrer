@@ -18,7 +18,7 @@ const info = (x) => { const g = gameOn(x.p.team, activeDay.value); return g ? (g
 <template>
   <header class="view-heading">
     <div>
-      <p class="eyebrow">DEIN TEAM · LIVE-ÜBERSICHT</p>
+      <p class="eyebrow">DEIN TEAM · ÜBERSICHT</p>
       <h1>Team-Cockpit</h1>
       <p class="small muted">Statistikstand {{ stand }}<span v-if="state.ai"> · KI-Coach bereit</span></p>
     </div>
@@ -57,7 +57,7 @@ const info = (x) => { const g = gameOn(x.p.team, activeDay.value); return g ? (g
         <b class="forecast-total num">{{ Math.round(L.total) }}</b>
         <p class="small muted">{{ L.playing }} von 16 Spielern mit Spiel</p>
       </div>
-      <div class="forecast-ring"><span>{{ Math.round(L.playing / 16 * 100) }}%</span><small>im Einsatz</small></div>
+      <div class="forecast-ring" :style="{ '--progress': (L.playing / 16 * 100) + '%' }"><span>{{ Math.round(L.playing / 16 * 100) }}%</span><small>im Einsatz</small></div>
     </div>
     <p v-if="missingN" class="bad warn"><b>Es fehlen {{ missingN }} Spieler</b> in der Aufstellung. Jede leere Position kostet 50 Punkte.</p>
     <p v-if="L.imports >= 6" class="small muted">Die Import-Grenze von 6 ist erreicht.</p>
@@ -106,7 +106,7 @@ const info = (x) => { const g = gameOn(x.p.team, activeDay.value); return g ? (g
 .lineup-card { gap: 16px; }
 .lineup-summary { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
 .forecast-total { display: block; color: var(--accent); font-family: var(--head); font-size: 3rem; line-height: 1; letter-spacing: -.05em; }
-.forecast-ring { width: 76px; height: 76px; flex: 0 0 76px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 5px solid rgba(101,213,232,.3); border-top-color: var(--accent); border-radius: 50%; }
+.forecast-ring { position: relative; width: 76px; height: 76px; flex: 0 0 76px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 50%; background: conic-gradient(var(--accent) var(--progress), rgba(101,213,232,.18) var(--progress)); }\n.forecast-ring::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: var(--surface); }\n.forecast-ring span,.forecast-ring small { position: relative; z-index: 1; }
 .forecast-ring span { font-family: var(--head); font-weight: 850; font-size: 1.1rem; }
 .forecast-ring small { color: var(--muted); font-size: .62rem; }
 .position-title { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
