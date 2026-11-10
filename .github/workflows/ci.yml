@@ -76,3 +76,5 @@ jobs:
           SQL
       - name: Verify schema can be reapplied
         run: psql -X -v ON_ERROR_STOP=1 -f db/migrations/001_initial_schema.sql
+      - name: Test relational integrity without retaining test data
+        run: psql -X -v ON_ERROR_STOP=1 -f db/tests/schema_integration.sql
