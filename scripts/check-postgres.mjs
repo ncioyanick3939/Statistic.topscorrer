@@ -14,15 +14,13 @@ if (process.env.PGHOST?.startsWith('/')) {
   console.error('Unix socket connections are not supported by this remote readiness check.')
   process.exit(2)
 }
-const sql = `BEGIN READ ONLY;
-SELECT current_setting('server_version_num')::int >= 160000 AS postgres_16_or_newer;
-SELECT COUNT(*) AS application_tables FROM information_schema.tables
+const sql = `SELECT (current_setting('server_version_num')::int >= 160000)::text,
+ (SELECT COUNT(*) FROM information_schema.tables
  WHERE table_schema = 'public' AND table_name IN (
  'seasons','teams','players','data_import_runs','games',
  'player_game_stats','goalie_game_stats','player_season_snapshots',
  'goalie_season_snapshots','fantasy_rosters','fantasy_roster_entries',
- 'forecast_snapshots');
-ROLLBACK;`
+ 'forecast_snapshots'));`
 const result = spawnSync('psql', ['-X', '-A', '-t', '-v', 'ON_ERROR_STOP=1', '-c', sql], {
   encoding: 'utf8',
   timeout: 15000,
@@ -36,12 +34,12 @@ if (result.status !== 0) {
   console.error('PostgreSQL connection or read-only query failed. Check network, credentials and database permissions.')
   process.exit(1)
 }
-const lines = result.stdout.trim().split(/\r?\n/).map(line => line.trim()).filter(Boolean)
-if (lines.length < 2 || !['t','f'].includes(lines[0]) || !/^\d+$/.test(lines[1])) {
+const values = result.stdout.trim().split('|').map(value => value.trim())
+if (values.length !== 2 || !['true','false'].includes(values[0]) || !/^\d+$/.test(values[1])) {
   console.error('Unexpected PostgreSQL readiness response.')
   process.exit(1)
 }
-const tableCount = Number(lines[1])
-console.log('PostgreSQL >= 16:', lines[0] === 't' ? 'yes' : 'no')
+const tableCount = Number(values[1])
+console.log('PostgreSQL >= 16:', values[0] === 'true' ? 'yes' : 'no')
 console.log('Application tables present:', tableCount, '/ 12')
-if (lines[0] !== 't') process.exitCode = 1
+if (values[0] !== 'true') process.exitCode = 1
