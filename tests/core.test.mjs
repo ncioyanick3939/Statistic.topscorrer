@@ -1,7 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { TEAMS, SCHEDULE, MY_SQUAD } from '../data.js'
 import { buildContext, forecast, rate } from '../model.js'
 import { lineup } from '../team.js'
