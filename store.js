@@ -6,6 +6,7 @@ import { buildContext, rate, forecast, buildValueModel, iso, chDate } from './mo
 import { lineup, sellPlan, matchDays } from './team.js'
 import { matchName, money, parseRows as parseShotRows } from './shot.js'
 import { readExport } from './importers.js'
+import { mergeStatistics } from './statistics-merge.js'
 
 const local = {
   get(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback } catch (e) { return fallback } },
@@ -127,7 +128,7 @@ export async function importFiles(files) {
     const okS = sk.length >= 200
     const okG = go.length >= 15
     if (!okS && !okG) { say('In diesen Dateien habe ich keine Statistik von sihf.ch gefunden. Bitte den Export der Spieler- oder Goaliestatistiken (Ansicht «Summary») wählen.', 'err'); return }
-    state.data = { date, sk: okS ? sk : state.data.sk, go: okG ? go : state.data.go }
+    state.data = mergeStatistics(state.data, { sk, go }, date)
     const saved = await persist('stats', 'tc-stats', state.data)
     say(
       (okS ? sk.length + ' Feldspieler' : '') + (okS && okG ? ' und ' : '') + (okG ? go.length + ' Torhüter' : '') + ' eingelesen, Stand ' + chDate(date) + '.' +
