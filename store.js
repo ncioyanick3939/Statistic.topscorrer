@@ -27,7 +27,7 @@ function applySquad(obj) {
 
 export const state = reactive({
   tab: 'spieler', query: '', current: null,
-  data: first, user: local.get('tc-user', {}), cash: (local.get('tc-squad', null) || {}).cash ?? null,
+  data: first, user: local.get('tc-user', {}), cash: (local.get('tc-squad', null) || {}).cash ?? null, market: local.get('tc-market', {}),
   pos: 'S', team: '', mine: false, sortKey: 'pts', sortDir: -1, shown: 25,
   message: '', messageKind: '', cloud: false, ai: false, aiMode: '', needsCode: false, hasCode: !!local.get('tc-code', '')
 })
@@ -90,6 +90,8 @@ export async function connectCloud() {
   try {
     const [a, b] = await Promise.all([db.doc('state/stats').get(), db.doc('state/entries').get()])
     if (a.exists) { const d = JSON.parse(a.data().json); if (d && d.sk && d.go && d.date > state.data.date) state.data = d }
+    const mk = await db.doc('state/market').get()
+    if (mk.exists) { const m = JSON.parse(mk.data().json); if (m && typeof m === 'object') state.market = m }
     const c = await db.doc('state/squad').get()
     if (c.exists) { const q = JSON.parse(c.data().json); if (q && q.squad) { applySquad(q.squad); state.cash = q.cash ?? null } }
     if (b.exists) { const u = JSON.parse(b.data().json); if (u && typeof u === 'object') state.user = u }
@@ -180,10 +182,11 @@ function aiData(playerId) {
     const x = ratedById.value[playerId]
     focus = '\nDer Spieler, um den es geht:\n' + line(x) + '\nPlus: ' + x.r.plus.join('; ') + '\nMinus: ' + x.r.minus.join('; ') + '\nErsatz-Kandidaten:\n' + replacementsFor(playerId).map(line).join('\n')
   }
-  return 'Statistik-Stand: ' + chDate(state.data.date) + '. Kontostand im Spiel: ' + (state.cash == null ? 'unbekannt' : state.cash) + '.\nDEIN KADER:\n' + mine + '\nBESTE FELDSPIELER ZUM KAUFEN (nicht im Kader):\n' + pool + '\nGOALIES ZUM KAUFEN:\n' + goalies + focus
+  const mk = marketList.value.length ? '\nHEUTE AUF DEM TRANSFERMARKT (nur diese sind kaufbar):\n' + marketList.value.map((x) => line(x) + '; Marktwert ' + k(x.price)).join('\n') : ''
+  return 'Statistik-Stand: ' + chDate(state.data.date) + '. Kontostand im Spiel: ' + (state.cash == null ? 'unbekannt' : state.cash) + '.\nDEIN KADER:\n' + mine + '\nBESTE FELDSPIELER ZUM KAUFEN (nicht im Kader):\n' + pool + '\nGOALIES ZUM KAUFEN:\n' + goalies + mk + focus
 }
 export async function askAI(question, playerId, onText) {
-  const prompt = 'Du hilfst einem Schweizer Fan beim Fantasy-Spiel «Topscorer» zur National League 2026/27. Antworte auf Deutsch (Schweizer Rechtschreibung, kein ß), kurz (höchstens 150 Wörter), ohne Markdown-Zeichen, mit klaren Namen und Zahlen. Stütze dich nur auf die Daten unten. Der Höchstpreis ist eine Schätzung aus dem Spiel-Schnitt. Wenn etwas fehlt oder unsicher ist, sag es offen. Gib keine Garantien.\n\n' + aiData(playerId) + '\n\nFRAGE: ' + question
+  const prompt = RULES + '\n\n' + 'Du hilfst einem Schweizer Fan beim Fantasy-Spiel «Topscorer» zur National League 2026/27. Antworte auf Deutsch (Schweizer Rechtschreibung, kein ß), kurz (höchstens 150 Wörter), ohne Markdown-Zeichen, mit klaren Namen und Zahlen. Stütze dich nur auf die Daten unten. Der Höchstpreis ist eine Schätzung aus dem Spiel-Schnitt. Wenn etwas fehlt oder unsicher ist, sag es offen. Gib keine Garantien.\n\n' + aiData(playerId) + '\n\nFRAGE: ' + question
   if (state.aiMode === 'server') {
     const r = await fetch('/api/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt, code: local.get('tc-code', '') }) })
     if (r.status === 401) { state.hasCode = false; throw { code: 'bad_code' } }
@@ -194,3 +197,13 @@ export async function askAI(question, playerId, onText) {
   const r = await sample(prompt, { onText: ({ text }) => onText && onText(text), modelTier: 'default', cache: false })
   return r.text
 }
+
+// ---- Transfermarkt: nur diese Spieler kannst du heute wirklich ersteigern ----
+export function addMarket(id, price) { state.market = { ...state.market, [id]: Math.round(+price) || 0 }; persist('market', 'tc-market', state.market) }
+export function removeMarket(id) { const m = { ...state.market }; delete m[id]; state.market = m; persist('market', 'tc-market', m) }
+export function clearMarket() { state.market = {}; persist('market', 'tc-market', {}) }
+export const marketList = computed(() => Object.keys(state.market).map((id) => ratedById.value[id] && { ...ratedById.value[id], price: state.market[id] || ratedById.value[id].w.mv || 0 }).filter(Boolean)
+  .sort((a, b) => ((b.w.max ?? 0) - (b.price || 0)) - ((a.w.max ?? 0) - (a.price || 0))))
+export const importsInLineup = computed(() => Object.values(MY_SQUAD).filter((m) => m[3] === 1 && m[4] === 1).length)
+
+const RULES = 'Regeln: Pro Spiel zählen Tor (Stürmer 60, Verteidiger 70, Goalie 100), Assist (40/50/55), Schuss aufs Tor 5, geblockter Schuss 10, Plus/Minus ±5, Strafen minus, Goalie-Paraden 4, Shutout 40, Eiszeit 1 pro Minute. Jeder Punkt bringt 50 Franken. Gebote auf dem Transfermarkt müssen mindestens dem Marktwert entsprechen, der Höchstbietende gewinnt, täglich sind nur 14 Spieler verfügbar. Das Konto darf bei Spielbeginn nicht im Minus sein, sonst gibt es an dem Spieltag keine Punkte. Aufstellung: 1 Goalie, 6 Verteidiger, 9 Stürmer, höchstens 6 Imports.'

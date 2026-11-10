@@ -113,7 +113,7 @@ export function forecast(p, ctx, user) {
   const games = fixtures.map((x) => {
     // Gegner mit vielen Gegentoren und Heimspiele heben die Erwartung
     const k = (inj ? 0 : 1) * clamp(ctx.teams[x.opp].gaPg / ctx.league.gaPg, 0.75, 1.3) * (x.home ? 1.05 : 0.95)
-    return { ...x, label: dayLabel(x.date), factor: k, g: gRate * k, a: aRate * k, pts: (gRate + aRate) * k, fp: gRate * k * (p.pos === 'D' ? 70 : 60) + aRate * k * 40, pGoal: 1 - Math.exp(-gRate * k), pPoint: 1 - Math.exp(-(gRate + aRate) * k) }
+    return { ...x, label: dayLabel(x.date), factor: k, g: gRate * k, a: aRate * k, pts: (gRate + aRate) * k, fp: gRate * k * (p.pos === 'D' ? 70 : 60) + aRate * k * (p.pos === 'D' ? 50 : 40), pGoal: 1 - Math.exp(-gRate * k), pPoint: 1 - Math.exp(-(gRate + aRate) * k) }
   })
   const sum = (key) => games.reduce((s, x) => s + x[key], 0)
   const playGames = share * (remaining - missed)
@@ -237,7 +237,7 @@ function line(pts) {
   const b = vx ? pts.reduce((s, q) => s + (q[0] - mx) * (q[1] - my), 0) / vx : 0
   return { a: my - b * mx, b }
 }
-const skill = (x) => x.fc.gRate * (x.p.pos === 'D' ? 70 : 60) + x.fc.aRate * 40
+const skill = (x) => x.fc.gRate * (x.p.pos === 'D' ? 70 : 60) + x.fc.aRate * (x.p.pos === 'D' ? 50 : 40)
 
 export function buildValueModel(list, ctx, user) {
   const known = list.filter((x) => fantasy(x.p, user).avg != null && x.p.gp >= 5)

@@ -1,6 +1,7 @@
 <script setup>
 import { buyList, sellList, state } from './store.js'
 import AskAI from './AskAI.vue'
+import MarketView from './MarketView.vue'
 import PlayerRow from './PlayerRow.vue'
 </script>
 
@@ -10,11 +11,13 @@ import PlayerRow from './PlayerRow.vue'
     <p class="muted small">Rechts steht der Höchstpreis: Darüber lohnt sich der Spieler im Topscorer-Spiel nicht mehr.</p>
   </header>
 
+  <MarketView />
+
   <AskAI v-if="state.ai" />
 
   <section>
-    <h2>Kaufen, wenn er weniger kostet</h2>
-    <p class="muted small head">Die zehn Spieler mit dem besten erwarteten Spiel-Schnitt. Vergleiche den Höchstpreis mit dem Preis im Spiel.</p>
+    <h2>Beste Spieler der Liga</h2>
+    <p class="muted small head">Die zehn Spieler mit dem besten erwarteten Spiel-Schnitt. Kaufbar sind aber nur die, die heute auf dem Transfermarkt stehen (siehe oben).</p>
     <div class="list"><PlayerRow v-for="x in buyList" :key="x.p.id" :x="x" price /></div>
     <p class="small muted foot">Ø Punkte kenne ich nur von deinen Spielern. Bei allen anderen sind sie aus der Statistik geschätzt und können um rund 20 Punkte danebenliegen.</p>
   </section>

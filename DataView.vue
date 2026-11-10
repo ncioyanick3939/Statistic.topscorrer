@@ -26,7 +26,7 @@ function onFiles(e) { const f = [...e.target.files]; if (f.length) importFiles(f
     <p><b>3. Einsatzquote.</b> Wie oft er bisher gespielt hat, bestimmt, wie viele der restlichen Spiele er mitmacht. Verletzte fallen aus.</p>
     <p><b>4. Saisonende.</b> Aus Stärke, Spielen und Zufall ergibt sich der erwartete Wert samt Bandbreite, in der rund vier von fünf Fällen liegen.</p>
     <p><b>5. Torhüter.</b> Die Fangquote wird mit den Schüssen auf seinem Konto gegen den Ligaschnitt gewichtet. Daraus folgen die erwarteten Gegentore.</p>
-    <p class="small muted">Die Note (0 bis 100) fasst Statistik, Team, Spielplan und, falls bekannt, Topscorer-Schnitt und Preis-Leistung zusammen. Eiszeit und Powerplay fehlen, solange sie nicht im Export stehen. Topscorer-Punkte sind geschätzt mit Tor 60 (Verteidiger 70) und Assist 40. Der Spielplan ist bis 29.11.2026 hinterlegt. Die Prognose ist eine Rechnung, keine Garantie.</p>
+    <p class="small muted">Die Note (0 bis 100) fasst Statistik, Team, Spielplan und, falls bekannt, Topscorer-Schnitt und Preis-Leistung zusammen. Die Prognose zählt nur Tore und Assists (Stürmer 60 und 40, Verteidiger 70 und 50 Punkte). Schüsse, geblockte Schüsse, Eiszeit und Strafen fehlen im Export und sind nicht eingerechnet. Der Höchstpreis ist ein Vergleichswert aus deinem Kader, nicht die Formel des Spiels. Der Spielplan ist bis 29.11.2026 hinterlegt. Die Prognose ist eine Rechnung, keine Garantie.</p>
   </section>
 </template>
 
