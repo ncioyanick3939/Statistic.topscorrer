@@ -8,35 +8,35 @@
 - Keine erfundenen oder ungeprüften Spielerdaten als Fakten darstellen.
 
 ## Phase 1 — Bestandsaufnahme
-- [ ] Projektstruktur und Build-/Startskripte erfassen
-- [ ] Vue-Komponenten, Store und Berechnungslogik dokumentieren
-- [ ] Datenquellen und Importabläufe prüfen
+- [x] Projektstruktur und Build-/Startskripte erfassen
+- [x] Vue-Komponenten, Store und Berechnungslogik dokumentieren
+- [x] Datenquellen und Importabläufe prüfen (SIHF-Zugang noch nicht abschliessend freigegeben)
 - [ ] Render-Dienst, Umgebungsvariablen und Logs prüfen
 - [ ] Sicherheits- und Datenschutzprüfung durchführen
 
 ## Phase 2 — Produkt und UX
-- [ ] Navigation und Informationsarchitektur vereinfachen
-- [ ] Responsives Dashboard gestalten
+- [x] Navigation und Informationsarchitektur vereinfachen
+- [x] Responsives Dashboard gestalten
 - [ ] Spielerprofile und Vergleichsansicht verbessern
 - [ ] Kader- und Transferansichten überarbeiten
 - [ ] Lade-, Fehler-, Leer- und Aktualitätszustände ergänzen
 
 ## Phase 3 — Datenqualität
-- [ ] Datenmodell für Spieler, Teams, Spiele und Statistiken definieren
+- [x] Datenmodell für Spieler, Teams, Spiele und Statistiken entwerfen (SQL-Entwurf, noch nicht migriert)
 - [ ] Quellen, Zeitstempel und Importstatus speichern
 - [ ] Dubletten und ungültige Werte erkennen
 - [ ] Importjobs nachvollziehbar und wiederholbar machen
 - [ ] PostgreSQL-Migration nur nach Prüfung der bestehenden Persistenz planen
 
 ## Phase 4 — Prognosen und Empfehlungen
-- [ ] Bestehende Bewertungslogik mit Tests absichern
+- [x] Erste Regressionstests für Bewertungslogik und Aufstellung ergänzen
 - [ ] Prognosen anhand historischer Daten evaluieren
 - [ ] Unsicherheit und Datenlücken sichtbar machen
 - [ ] Aufstellungs- und Transferempfehlungen begründen
 - [ ] KI nur mit verifizierten App-Daten und klaren Grenzen einsetzen
 
 ## Phase 5 — Release
-- [ ] Build und automatisierte Tests ausführen
+- [ ] Build und automatisierte Tests ausführen (CI-Workflow eingerichtet, Lauf noch zu verifizieren)
 - [ ] Render-Deploy und Healthcheck prüfen
 - [ ] Datenbank-Backup und Rollback testen
 - [ ] Mobile und Desktop Smoke-Tests durchführen
@@ -45,3 +45,10 @@
 - Render-Service-URL und verwendeter Service-Typ
 - Verfügbare und erlaubte Datenquellen für die Liga
 - Welche Funktionen zwingend erhalten bleiben müssen
+
+
+## Bereits umgesetzt
+- [x] Ice-Blue-Design, Team-Cockpit, Seitenüberschriften und Mobile-Navigation
+- [x] GitHub Actions Workflow für npm test und npm run build
+- [x] SIHF-Datenzugriff und rechtliche/technische Einschränkungen dokumentiert
+- [x] PostgreSQL-Schemaentwurf unter db/migrations (nicht auf Render angewendet)
