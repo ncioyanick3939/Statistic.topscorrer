@@ -8,6 +8,10 @@ const mine = computed(() => ownedRated.value.slice().sort((a, b) => b.r.score - 
 </script>
 
 <template>
+  <header class="view-heading">
+    <div><p class="eyebrow">SCOUTING · SPIELERDATEN</p><h1>Spieler-Center</h1><p class="small muted">Vergleiche Leistung, Form und Preis.</p></div>
+    <span class="heading-mark" aria-hidden="true">◎</span>
+  </header>
   <section class="card">
     <h2>Spieler suchen</h2>
     <input id="q" type="search" autocomplete="off" placeholder="Name eingeben, z. B. Malgin" v-model="state.query" @input="onInput" aria-label="Spielername" />

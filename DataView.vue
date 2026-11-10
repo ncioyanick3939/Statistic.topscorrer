@@ -1,15 +1,25 @@
 <script setup>
+import { computed } from 'vue'
 import { state, stand, importFiles } from './store.js'
+import { sectionFreshness } from './statistics-merge.js'
+const freshness = computed(() => sectionFreshness(state.data).map(item => ({
+  ...item,
+  label: (item.key === 'sk' ? 'Feldspieler' : 'Torhüter') + ': ' +
+    (item.ageDays == null ? 'Datum unbekannt' : item.ageDays < 0 ? 'Datum liegt in der Zukunft' :
+      item.ageDays > 2 ? `Daten ${item.ageDays} Tage alt – bitte SIHF-Export aktualisieren` :
+      item.ageDays === 0 ? 'Stand heute' : `Stand vor ${item.ageDays} Tag${item.ageDays === 1 ? '' : 'en'}`)
+})))
 function onFiles(e) { const f = [...e.target.files]; if (f.length) importFiles(f).then(() => { e.target.value = '' }) }
 </script>
 
 <template>
-  <header>
-    <h1>Daten</h1>
-    <p class="muted small">Stand der Statistik: <b>{{ stand }}</b></p>
+  <header class="view-heading">
+    <div><p class="eyebrow">DATEN · QUALITÄT</p><h1>Daten-Center</h1><p class="muted small">Statistikstand {{ stand }}</p></div>
+    <span class="heading-mark" aria-hidden="true">▤</span>
   </header>
   <section class="card">
     <h2>Aktualisieren</h2>
+    <p v-for="item in freshness" :key="item.key" class="freshness" :class="{ stale: item.stale }" role="status">{{ item.label }}</p>
     <ol>
       <li>Auf sihf.ch die <a href="https://www.sihf.ch/de/game-center/liga/spielerstatistiken/1-1" target="_blank" rel="noopener">Spielerstatistiken</a> öffnen, «Export» antippen, CSV oder PDF wählen.</li>
       <li>Dasselbe bei den <a href="https://www.sihf.ch/de/game-center/liga/goaliestatistiken/1-1" target="_blank" rel="noopener">Goaliestatistiken</a>.</li>
@@ -32,6 +42,8 @@ function onFiles(e) { const f = [...e.target.files]; if (f.length) importFiles(f
 
 <style scoped>
 ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.freshness { font-weight: 700; color: var(--good); }
+.freshness.stale { color: var(--bad); }
 .msg { font-weight: 700; }
 .msg.ok { color: var(--good); }
 .msg.err { color: var(--bad); }

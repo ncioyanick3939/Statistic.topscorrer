@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - feature/topscorer-ai-2-pro-ice
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run model regression tests
+        run: npm test
+      - name: Build app
+        run: npm run build
+
+  postgres-schema:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: topscorer_test
+          POSTGRES_PASSWORD: ci_only_password
+          POSTGRES_DB: topscorer_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U topscorer_test -d topscorer_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: topscorer_test
+      PGPASSWORD: ci_only_password
+      PGDATABASE: topscorer_ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Apply schema to disposable CI database
+        run: psql -X -v ON_ERROR_STOP=1 -f db/migrations/001_initial_schema.sql
+      - name: Verify expected tables and constraints
+        run: |
+          psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE actual integer;
+          BEGIN
+            SELECT COUNT(*) INTO actual FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name IN ('seasons', 'teams', 'players', 'data_import_runs',
+                'games', 'player_game_stats', 'goalie_game_stats',
+                'player_season_snapshots', 'goalie_season_snapshots',
+                'fantasy_rosters', 'fantasy_roster_entries', 'forecast_snapshots');
+            IF actual <> 12 THEN
+              RAISE EXCEPTION 'Expected 12 application tables, got %', actual;
+            END IF;
+          END $$;
+          SQL
+      - name: Verify schema can be reapplied
+        run: psql -X -v ON_ERROR_STOP=1 -f db/migrations/001_initial_schema.sql
+      - name: Test relational integrity without retaining test data
+        run: psql -X -v ON_ERROR_STOP=1 -f db/tests/schema_integration.sql
