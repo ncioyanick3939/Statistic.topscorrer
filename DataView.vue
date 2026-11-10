@@ -1,5 +1,14 @@
 <script setup>
+import { computed } from 'vue'
 import { state, stand, importFiles } from './store.js'
+const freshness = computed(() => {
+  const date = state.data?.date
+  const timestamp = Date.parse(date + 'T00:00:00Z')
+  if (!Number.isFinite(timestamp)) return { label: 'Datum unbekannt', stale: true }
+  const age = Math.floor((Date.now() - timestamp) / 86400000)
+  if (age < 0) return { label: 'Statistikdatum liegt in der Zukunft', stale: true }
+  return { label: age > 2 ? `Daten ${age} Tage alt – bitte SIHF-Export aktualisieren` : `Datenstand ${age === 0 ? 'von heute' : `vor ${age} Tag${age === 1 ? '' : 'en'}`}`, stale: age > 2 }
+})
 function onFiles(e) { const f = [...e.target.files]; if (f.length) importFiles(f).then(() => { e.target.value = '' }) }
 </script>
 
@@ -10,6 +19,7 @@ function onFiles(e) { const f = [...e.target.files]; if (f.length) importFiles(f
   </header>
   <section class="card">
     <h2>Aktualisieren</h2>
+    <p class="freshness" :class="{ stale: freshness.stale }" role="status">{{ freshness.label }}</p>
     <ol>
       <li>Auf sihf.ch die <a href="https://www.sihf.ch/de/game-center/liga/spielerstatistiken/1-1" target="_blank" rel="noopener">Spielerstatistiken</a> öffnen, «Export» antippen, CSV oder PDF wählen.</li>
       <li>Dasselbe bei den <a href="https://www.sihf.ch/de/game-center/liga/goaliestatistiken/1-1" target="_blank" rel="noopener">Goaliestatistiken</a>.</li>
@@ -32,6 +42,8 @@ function onFiles(e) { const f = [...e.target.files]; if (f.length) importFiles(f
 
 <style scoped>
 ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.freshness { font-weight: 700; color: var(--good); }
+.freshness.stale { color: var(--bad); }
 .msg { font-weight: 700; }
 .msg.ok { color: var(--good); }
 .msg.err { color: var(--bad); }
