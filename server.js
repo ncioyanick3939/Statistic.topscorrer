@@ -4,6 +4,7 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { contentType, resolveStaticPath } from './static-files.js'
 
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'dist')
 const KEY = process.env.ANTHROPIC_API_KEY || ''
@@ -53,13 +54,17 @@ http.createServer((req, res) => {
   const url = (req.url || '/').split('?')[0]
   if (url === '/api/status') return send(res, 200, { ai: !!KEY, needsCode: !!CODE })
   if (url === '/api/ask' && req.method === 'POST') return ask(req, res)
-  const TYPES = { '.png': 'image/png', '.webmanifest': 'application/manifest+json', '.html': 'text/html; charset=utf-8' }
-  const clean = path.normalize(url).replace(/^(\.\.[/\\])+/, '')
-  let file = path.join(dir, clean)
-  if (!file.startsWith(dir) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(dir, 'index.html')
+  if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, { error: 'method_not_allowed' })
+  const resolved = resolveStaticPath(dir, url)
+  if (!resolved) return send(res, 400, { error: 'invalid_path' })
+  const isAsset = path.extname(resolved) !== ''
+  const file = fs.existsSync(resolved) && fs.statSync(resolved).isFile()
+    ? resolved
+    : isAsset ? null : path.join(dir, 'index.html')
+  if (!file) return send(res, 404, { error: 'not_found' })
   fs.readFile(file, (err, buf) => {
     if (err) { res.writeHead(500); return res.end('Noch nicht gebaut. Bitte zuerst npm run build ausführen.') }
-    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'text/html; charset=utf-8' })
-    res.end(buf)
+    res.writeHead(200, { 'Content-Type': contentType(file), 'X-Content-Type-Options': 'nosniff' })
+    res.end(req.method === 'HEAD' ? undefined : buf)
   })
 }).listen(PORT, () => console.log('läuft auf Port ' + PORT))
