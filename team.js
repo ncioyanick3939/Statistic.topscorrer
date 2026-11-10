@@ -60,3 +60,13 @@ export function sellPlan(list, keep, need) {
   rec(0, [], 0)
   return best
 }
+
+// Wie viele Spiele hat jedes Team in den nächsten 7 Tagen (ab und mit dem Starttag)?
+export function weekGames(from, days = 7) {
+  const end = new Date(from + 'T00:00:00Z')
+  end.setUTCDate(end.getUTCDate() + days - 1)
+  const to = end.toISOString().slice(0, 10)
+  const n = {}
+  Object.keys(SCHEDULE).filter((d) => d >= from && d <= to).forEach((d) => (SCHEDULE[d] || '').split(' ').filter(Boolean).forEach((g) => g.split('-').forEach((tm) => { n[tm] = (n[tm] || 0) + 1 })))
+  return n
+}

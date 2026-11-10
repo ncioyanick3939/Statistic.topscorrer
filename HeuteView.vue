@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { TEAMS, MY_SQUAD, SCHEDULE } from './data.js'
-import { state, ctx, stand, days, activeDay, todayLineup, ownedRated, plan, marketList, setCash, openPlayer } from './store.js'
+import { state, ctx, stand, week, days, activeDay, todayLineup, ownedRated, plan, marketList, setCash, openPlayer } from './store.js'
 import { gameOn } from './team.js'
 import { dayLabel } from './model.js'
 import { fmt, mio, k, surname } from './format.js'
@@ -25,6 +25,15 @@ const games = computed(() => (SCHEDULE[activeDay.value] || '').split(' ').filter
   return { h, a, n: mine(h) + mine(a) }
 }))
 
+// Spielplan-Check: deine Spieler nach Zahl der Spiele in 7 Tagen, dazu die Teams mit den meisten Spielen
+const weekGroups = computed(() => {
+  const m = {}
+  ownedRated.value.filter((x) => !x.fc.inj).forEach((x) => { const n = week.value[x.p.team] || 0; (m[n] = m[n] || []).push(surname(x.p.name)) })
+  return Object.keys(m).map(Number).sort((a, b) => b - a).map((n) => ({ n, names: m[n].join(', ') }))
+})
+const weekTop = computed(() => Object.entries(week.value).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 5))
+const weekTone = (n) => (n >= 3 ? 'good' : n === 2 ? 'mid' : 'bad')
+
 // Die wichtigsten Aufgaben für heute, höchstens fünf, wichtigste zuerst
 const tasks = computed(() => {
   const t = []
@@ -46,7 +55,7 @@ const tasks = computed(() => {
 </script>
 
 <template>
-  <header class="head">
+  <header class="pagehead">
     <div><h1>Heute</h1><p class="muted">Dein Team für {{ dayLabel(activeDay) }}<span v-if="state.ai"> · KI-Coach bereit</span></p></div>
     <span class="chip" :class="age > 7 ? 'mid' : 'good'">Statistik vom {{ stand }}</span>
   </header>
@@ -62,8 +71,8 @@ const tasks = computed(() => {
     <div class="card kpi"><p class="lbl">Spielen am Tag</p><b class="val num">{{ L.playing }} <small>von 16</small></b><p class="small">{{ L.imports }} von 6 Imports</p></div>
   </section>
 
-  <div class="grid">
-    <div class="side">
+  <div class="dash">
+    <div class="dcol-side">
       <section class="card">
         <h2>Heute zu tun</h2>
         <ul v-if="tasks.length" class="tasks">
@@ -86,9 +95,18 @@ const tasks = computed(() => {
         </ul>
         <p v-else class="muted">Spielplan nicht verfügbar.</p>
       </section>
+
+      <section class="card">
+        <h2>Spiele in 7 Tagen</h2>
+        <p class="small muted">Mehr Spiele bedeuten mehr Punkte. Deine Spieler, nach Zahl der Spiele:</p>
+        <ul class="wk">
+          <li v-for="g in weekGroups" :key="g.n"><span class="chip" :class="weekTone(g.n)">{{ g.n }} {{ g.n === 1 ? 'Spiel' : 'Spiele' }}</span><span class="small">{{ g.names }}</span></li>
+        </ul>
+        <p class="small"><b>Meiste Spiele in der Liga:</b> <span v-for="(t, i) in weekTop" :key="t[0]">{{ i ? ' · ' : '' }}{{ t[0] }} {{ t[1] }}</span></p>
+      </section>
     </div>
 
-    <div class="main">
+    <div class="dcol-main">
       <section class="card">
         <div class="kh">
           <h2>Mein Kader <span class="muted small">({{ ownedRated.length }})</span></h2>
@@ -135,25 +153,9 @@ const tasks = computed(() => {
 </template>
 
 <style scoped>
-.head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
-.kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-@media (min-width: 900px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.kpi { gap: 4px; padding: 14px 16px; }
-.kpi .lbl { color: var(--muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-.val { font-family: var(--head); font-size: 1.7rem; font-weight: 800; line-height: 1.1; }
-.val small { font-size: 0.9rem; font-weight: 500; color: var(--muted); }
-.val.neg { color: var(--bad); }
-.val.pos { color: var(--good); }
-.kpi.bad-b { border-color: var(--bad); }
-.kpi.good-b { border-color: var(--good); }
-.kpi .small { color: var(--muted); }
-.grid { display: flex; flex-direction: column; gap: 16px; }
-.side, .main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-@media (min-width: 1200px) {
-  .grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); grid-template-areas: 'main side'; align-items: start; }
-  .main { grid-area: main; }
-  .side { grid-area: side; }
-}
+.wk { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.wk li { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.wk .chip { flex: 0 0 auto; }
 .tasks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .tasks li { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; border-radius: 12px; background: var(--soft); border-left: 4px solid var(--line); }
 .tasks li.bad { border-left-color: var(--bad); background: var(--bad-soft); color: var(--ink); }

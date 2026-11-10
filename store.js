@@ -3,7 +3,7 @@ import { reactive, computed } from 'vue'
 import baseData from './stats.json'
 import { MY_SQUAD } from './data.js'
 import { buildContext, rate, forecast, buildValueModel, iso, chDate } from './model.js'
-import { lineup, sellPlan, matchDays } from './team.js'
+import { lineup, sellPlan, matchDays, weekGames } from './team.js'
 import { matchName, money, parseRows as parseShotRows } from './shot.js'
 import { readExport } from './importers.js'
 import { mergeStatistics } from './statistics-merge.js'
@@ -224,6 +224,7 @@ const RULES = 'Regeln: Pro Spiel zählen Tor (Stürmer 60, Verteidiger 70, Goali
 
 // ---- Ansicht «Heute» und «Markt» ----
 export const ownedRated = computed(() => rated.value.filter((x) => MY_SQUAD[x.p.id]))
+export const week = computed(() => weekGames(ctx.value.today))
 export const days = computed(() => matchDays(ctx.value.today))
 export const activeDay = computed(() => (days.value.includes(state.day) ? state.day : days.value[0] || ''))
 export const todayLineup = computed(() => lineup(ownedRated.value, activeDay.value || null))

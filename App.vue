@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { state, current, connectCloud } from './store.js'
 import Sidebar from './Sidebar.vue'
 import TabBar from './TabBar.vue'
@@ -10,6 +10,7 @@ import PlayerDetail from './PlayerDetail.vue'
 import DataView from './DataView.vue'
 
 onMounted(connectCloud)
+const wide = computed(() => state.tab === 'heute' || state.tab === 'markt' || (state.tab === 'spieler' && !current.value))
 </script>
 
 <template>
@@ -20,7 +21,7 @@ onMounted(connectCloud)
         <b><span class="brand-kicker">TEAM MANAGEMENT · HOCKEY</span>Mein Topscorer-Team</b>
         <span>Dein Kader. Deine Strategie. Dein nächster Spieltag.</span>
       </header>
-      <main class="page" :class="{ wide: state.tab === 'heute' }">
+      <main class="page" :class="{ wide }">
         <PlayerDetail v-if="current && state.tab === 'spieler'" :x="current" />
         <HeuteView v-else-if="state.tab === 'heute'" />
         <MarktView v-else-if="state.tab === 'markt'" />

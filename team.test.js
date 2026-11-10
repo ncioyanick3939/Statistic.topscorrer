@@ -2,7 +2,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { MY_SQUAD } from './data.js'
-import { lineup, sellPlan, SLOTS } from './team.js'
+import { lineup, sellPlan, SLOTS, weekGames } from './team.js'
 
 const mk = (id, pos, avg, mv, imp = 0) => { MY_SQUAD[id] = [avg, mv, '', 1, imp]; return { p: { id, pos, team: 'ZSC' }, fc: {}, w: { avg, mv } } }
 const squad = () => {
@@ -30,4 +30,10 @@ test('Verkaufsplan deckt das Minus und lässt Mindestbesetzung stehen', () => {
   assert.ok(plan.sum >= 250000)
   const rest = list.filter((x) => !plan.sold.includes(x))
   assert.ok(rest.filter((x) => x.p.pos === 'G').length >= 1 && rest.filter((x) => x.p.pos === 'D').length >= 6 && rest.filter((x) => x.p.pos === 'F').length >= 9)
+})
+test('Spiele pro Team in 7 Tagen laut Spielplan', () => {
+  const w = weekGames('2026-11-11')
+  assert.equal(w.EVZ, 3)
+  assert.equal(w.HCL, 3)
+  assert.equal(w.ZSC, 2)
 })

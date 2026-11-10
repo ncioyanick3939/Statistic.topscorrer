@@ -117,3 +117,25 @@ button.row .fc b { color:var(--accent); }
   .page { width: 100%; max-width: 760px; padding-top: 28px; padding-left: 28px; padding-right: 28px; }
   .page.wide { max-width: 1440px; }
 }
+
+/* Gemeinsame Bausteine der breiten Ansichten (Heute, Markt, Kader) */
+.pagehead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 900px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.kpi { gap: 4px; padding: 14px 16px; }
+.kpi .lbl { color: var(--muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.val { font-family: var(--head); font-size: 1.7rem; font-weight: 800; line-height: 1.1; }
+.val small { font-size: 0.9rem; font-weight: 500; color: var(--muted); }
+.val.neg { color: var(--bad); }
+.val.pos { color: var(--good); }
+.kpi.bad-b { border-color: var(--bad); }
+.kpi.good-b { border-color: var(--good); }
+.kpi .small { color: var(--muted); }
+.list2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 8px; }
+.dash { display: flex; flex-direction: column; gap: 16px; }
+.dcol-side, .dcol-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+@media (min-width: 1200px) {
+  .dash { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); grid-template-areas: 'main side'; align-items: start; }
+  .dcol-main { grid-area: main; }
+  .dcol-side { grid-area: side; }
+}

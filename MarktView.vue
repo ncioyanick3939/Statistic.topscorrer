@@ -1,10 +1,10 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { MY_SQUAD } from './data.js'
 import { state, plan, ownedRated, baseLineup, toggleKeep, executePlan } from './store.js'
 import MarketView from './MarketView.vue'
 import AskAI from './AskAI.vue'
-const fmt = (n) => (n < 0 ? '−' : '') + String(Math.abs(Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g, "'")
+import { fmt } from './format.js'
+const marketN = computed(() => Object.keys(state.market).length)
 const confirm = ref(false)
 const minus = computed(() => state.cash != null && state.cash < 0)
 const left = computed(() => (plan.value ? ownedRated.value.length - plan.value.sold.length : 0))
@@ -12,10 +12,19 @@ function run() { executePlan(); confirm.value = false }
 </script>
 
 <template>
-  <header class="view-heading">
-    <div><p class="eyebrow">STRATEGIE · TRANSFERS</p><h1>Transfer-Center</h1><p class="small muted">Kaderwert verbessern, Budget im Griff behalten.</p></div>
-    <span class="heading-mark" aria-hidden="true">⇄</span>
+  <header class="pagehead">
+    <div><h1>Markt</h1><p class="muted">Verkaufen, kaufen und das Konto im Plus halten</p></div>
+    <span class="chip" :class="minus ? 'bad' : 'good'">{{ minus ? 'Konto im Minus' : 'Konto im Plus' }}</span>
   </header>
+
+  <section class="kpis" aria-label="Kennzahlen">
+    <div class="card kpi" :class="minus ? 'bad-b' : 'good-b'"><p class="lbl">Kontostand</p><b class="val num" :class="minus ? 'neg' : 'pos'">{{ state.cash == null ? '–' : fmt(state.cash) }}</b><p class="small">{{ minus ? 'Keine Punkte, solange im Minus' : 'Du bekommst Punkte' }}</p></div>
+    <div class="card kpi"><p class="lbl">Verkauf bringt</p><b class="val num">{{ plan ? fmt(plan.sum) : '–' }}</b><p class="small">{{ plan ? plan.sold.length + ' Spieler laut Plan' : minus ? 'Mit 5 Verkäufen nicht möglich' : 'Nichts zu verkaufen' }}</p></div>
+    <div class="card kpi"><p class="lbl">Punkte-Verlust</p><b class="val num">{{ plan ? '−' + Math.round(plan.loss) : '0' }}</b><p class="small">pro Spiel, von {{ Math.round(baseLineup.total) }}</p></div>
+    <div class="card kpi"><p class="lbl">Transfermarkt</p><b class="val num">{{ marketN }} <small>von 14</small></b><p class="small">Spieler eingetragen</p></div>
+  </section>
+  <div class="dash">
+  <div class="dcol-side">
   <section class="card">
     <h2>Verkaufen</h2>
     <template v-if="!minus">
@@ -43,9 +52,10 @@ function run() { executePlan(); confirm.value = false }
       <p class="small muted">Markierte Spieler verkaufe ich nie vor.</p>
     </details>
   </section>
-
-  <MarketView />
   <AskAI v-if="state.ai" />
+  </div>
+  <div class="dcol-main"><MarketView /></div>
+  </div>
 </template>
 
 <style scoped>
@@ -56,6 +66,6 @@ function run() { executePlan(); confirm.value = false }
 .warn { padding: 10px 12px; border-radius: 12px; }
 summary { cursor: pointer; font-weight: 700; color: var(--accent); }
 .keep { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
-.keep button { border: 2px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px; }
-.keep button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.keep button { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 7px 13px; min-height: 40px; }
+.keep button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 </style>
