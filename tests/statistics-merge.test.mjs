@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mergeStatistics, sectionFreshness } from '../statistics-merge.js'
+import { mergeStatistics, sectionFreshness, validIsoDate } from '../statistics-merge.js'
 
 const previous = { date: '2026-11-01', sk: ['old skater'], go: ['old goalie'] }
 test('skater-only update does not mark old goalies as fresh', () => {
@@ -20,4 +20,13 @@ test('both valid categories refresh together', () => {
 test('invalid imports are rejected', () => {
   assert.throws(() => mergeStatistics(previous, { sk: [], go: [] }, '2026-11-10'))
   assert.throws(() => mergeStatistics(previous, { sk: Array(200).fill('s') }, 'bad-date'))
+})
+
+test('date validation rejects calendar rollover and accepts leap day', () => {
+  assert.equal(validIsoDate('2026-02-29'), false)
+  assert.equal(validIsoDate('2026-13-01'), false)
+  assert.equal(validIsoDate('2026-11-31'), false)
+  assert.equal(validIsoDate('2024-02-29'), true)
+  assert.equal(validIsoDate('2026-11-10'), true)
+  assert.throws(() => mergeStatistics(previous, { sk: Array(200).fill('s') }, '2026-02-29'))
 })
