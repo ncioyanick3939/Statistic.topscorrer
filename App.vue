@@ -12,7 +12,10 @@ onMounted(connectCloud)
 </script>
 
 <template>
-  <header class="top"><b>Mein Topscorer-Team</b><span>Aufstellen, verkaufen, ersteigern</span></header>
+  <header class="top">
+    <b><span class="brand-kicker">TEAM MANAGEMENT · HOCKEY</span>Mein Topscorer-Team</b>
+    <span>Dein Kader. Deine Strategie. Dein nächster Spieltag.</span>
+  </header>
   <main class="page">
     <PlayerDetail v-if="current && state.tab === 'spieler'" :x="current" />
     <HeuteView v-else-if="state.tab === 'heute'" />
@@ -22,3 +25,15 @@ onMounted(connectCloud)
   </main>
   <TabBar />
 </template>
+
+<style>
+.brand-kicker {
+  display: block;
+  margin-bottom: 7px;
+  color: #79d9e9;
+  font-family: var(--body);
+  font-size: .66rem;
+  font-weight: 850;
+  letter-spacing: .16em;
+}
+</style>
