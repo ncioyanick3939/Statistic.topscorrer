@@ -1,11 +1,12 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { askAI } from './store.js'
+import { askAI, state, setCode } from './store.js'
 const props = defineProps({ player: String, name: String })
 const q = ref('')
 const answer = ref('')
 const busy = ref(false)
 const error = ref('')
+const code = ref('')
 const chips = computed(() => props.player
   ? ['Lohnt sich ' + props.name + ' noch?', 'Wen würdest du als Ersatz nehmen?', 'Soll ich ihn verkaufen?']
   : ['Wen soll ich verkaufen?', 'Wie komme ich aus dem Minus?', 'Wer ist ein guter Ersatz für Weber?', 'Welchen Goalie soll ich holen?'])
@@ -14,7 +15,7 @@ async function ask(text) {
   if (!t || busy.value) return
   q.value = t; busy.value = true; error.value = ''; answer.value = ''
   try { answer.value = await askAI(t, props.player, (x) => (answer.value = x)) }
-  catch (e) { error.value = e && e.code === 'not_granted' ? 'Die KI ist nicht freigegeben.' : e && e.code === 'rate_limited' ? 'Zu viele Fragen, bitte kurz warten.' : 'Die KI hat gerade nicht geantwortet. Bitte nochmals versuchen.' }
+  catch (e) { error.value = e && e.code === 'not_granted' ? 'Die KI ist nicht freigegeben.' : e && e.code === 'bad_code' ? 'Der Zugangscode stimmt nicht.' : e && e.code === 'rate_limited' ? 'Zu viele Fragen, bitte kurz warten.' : 'Die KI hat gerade nicht geantwortet. Bitte nochmals versuchen.' }
   busy.value = false
 }
 </script>
@@ -23,11 +24,17 @@ async function ask(text) {
   <section class="card">
     <h2>Frag die KI</h2>
     <p class="small muted">Sie kennt deinen Kader, den Kontostand und die Zahlen dieser App.</p>
+    <form v-if="state.aiMode === 'server' && state.needsCode && !state.hasCode" class="ask" @submit.prevent="setCode(code)">
+      <input type="password" v-model="code" placeholder="Zugangscode" aria-label="Zugangscode" />
+      <button class="btn" type="submit">OK</button>
+    </form>
+    <template v-else>
     <div class="chips"><button v-for="c in chips" :key="c" type="button" @click="ask(c)">{{ c }}</button></div>
     <form class="ask" @submit.prevent="ask()">
       <input type="text" v-model="q" placeholder="Eigene Frage stellen" aria-label="Frage an die KI" />
       <button class="btn" type="submit" :disabled="busy">{{ busy ? '…' : 'Fragen' }}</button>
     </form>
+    </template>
     <p v-if="answer" class="answer">{{ answer }}</p>
     <p v-if="error" class="bad err">{{ error }}</p>
     <p v-if="answer && !busy" class="small muted">Das ist eine Einschätzung auf Basis der Statistik, keine Garantie.</p>

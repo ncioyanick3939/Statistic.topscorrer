@@ -29,7 +29,7 @@ export const state = reactive({
   tab: 'spieler', query: '', current: null,
   data: first, user: local.get('tc-user', {}), cash: (local.get('tc-squad', null) || {}).cash ?? null,
   pos: 'S', team: '', mine: false, sortKey: 'pts', sortDir: -1, shown: 25,
-  message: '', messageKind: '', cloud: false, ai: false
+  message: '', messageKind: '', cloud: false, ai: false, aiMode: '', needsCode: false, hasCode: !!local.get('tc-code', '')
 })
 
 export const ctx = computed(() => buildContext(state.data))
@@ -73,8 +73,14 @@ function persist(doc, key, value) {
 let sample = null
 async function connectAI() {
   try { sample = await (window.claude && window.claude.use ? window.claude.use('sample') : null) } catch (e) { sample = null }
-  state.ai = !!sample
+  if (sample) { state.ai = true; state.aiMode = 'claude'; return }
+  try {
+    const r = await fetch('/api/status')
+    const j = r.ok ? await r.json() : null
+    if (j && j.ai) { state.ai = true; state.aiMode = 'server'; state.needsCode = !!j.needsCode }
+  } catch (e) { /* kein Server dahinter, die KI bleibt versteckt */ }
 }
+export function setCode(c) { local.set('tc-code', c.trim()); state.hasCode = !!c.trim() }
 
 export async function connectCloud() {
   connectAI()
@@ -177,8 +183,14 @@ function aiData(playerId) {
   return 'Statistik-Stand: ' + chDate(state.data.date) + '. Kontostand im Spiel: ' + (state.cash == null ? 'unbekannt' : state.cash) + '.\nDEIN KADER:\n' + mine + '\nBESTE FELDSPIELER ZUM KAUFEN (nicht im Kader):\n' + pool + '\nGOALIES ZUM KAUFEN:\n' + goalies + focus
 }
 export async function askAI(question, playerId, onText) {
-  if (!sample) throw new Error('KI nicht verfügbar')
   const prompt = 'Du hilfst einem Schweizer Fan beim Fantasy-Spiel «Topscorer» zur National League 2026/27. Antworte auf Deutsch (Schweizer Rechtschreibung, kein ß), kurz (höchstens 150 Wörter), ohne Markdown-Zeichen, mit klaren Namen und Zahlen. Stütze dich nur auf die Daten unten. Der Höchstpreis ist eine Schätzung aus dem Spiel-Schnitt. Wenn etwas fehlt oder unsicher ist, sag es offen. Gib keine Garantien.\n\n' + aiData(playerId) + '\n\nFRAGE: ' + question
+  if (state.aiMode === 'server') {
+    const r = await fetch('/api/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt, code: local.get('tc-code', '') }) })
+    if (r.status === 401) { state.hasCode = false; throw { code: 'bad_code' } }
+    if (r.status === 429) throw { code: 'rate_limited' }
+    if (!r.ok) throw new Error('api')
+    return (await r.json()).text
+  }
   const r = await sample(prompt, { onText: ({ text }) => onText && onText(text), modelTier: 'default', cache: false })
   return r.text
 }
