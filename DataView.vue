@@ -1,14 +1,14 @@
 <script setup>
 import { computed } from 'vue'
 import { state, stand, importFiles } from './store.js'
-const freshness = computed(() => {
-  const date = state.data?.date
-  const timestamp = Date.parse(date + 'T00:00:00Z')
-  if (!Number.isFinite(timestamp)) return { label: 'Datum unbekannt', stale: true }
-  const age = Math.floor((Date.now() - timestamp) / 86400000)
-  if (age < 0) return { label: 'Statistikdatum liegt in der Zukunft', stale: true }
-  return { label: age > 2 ? `Daten ${age} Tage alt – bitte SIHF-Export aktualisieren` : `Datenstand ${age === 0 ? 'von heute' : `vor ${age} Tag${age === 1 ? '' : 'en'}`}`, stale: age > 2 }
-})
+import { sectionFreshness } from './statistics-merge.js'
+const freshness = computed(() => sectionFreshness(state.data).map(item => ({
+  ...item,
+  label: (item.key === 'sk' ? 'Feldspieler' : 'Torhüter') + ': ' +
+    (item.ageDays == null ? 'Datum unbekannt' : item.ageDays < 0 ? 'Datum liegt in der Zukunft' :
+      item.ageDays > 2 ? `Daten ${item.ageDays} Tage alt – bitte SIHF-Export aktualisieren` :
+      item.ageDays === 0 ? 'Stand heute' : `Stand vor ${item.ageDays} Tag${item.ageDays === 1 ? '' : 'en'}`)
+})))
 function onFiles(e) { const f = [...e.target.files]; if (f.length) importFiles(f).then(() => { e.target.value = '' }) }
 </script>
 
@@ -19,7 +19,7 @@ function onFiles(e) { const f = [...e.target.files]; if (f.length) importFiles(f
   </header>
   <section class="card">
     <h2>Aktualisieren</h2>
-    <p class="freshness" :class="{ stale: freshness.stale }" role="status">{{ freshness.label }}</p>
+    <p v-for="item in freshness" :key="item.key" class="freshness" :class="{ stale: item.stale }" role="status">{{ item.label }}</p>
     <ol>
       <li>Auf sihf.ch die <a href="https://www.sihf.ch/de/game-center/liga/spielerstatistiken/1-1" target="_blank" rel="noopener">Spielerstatistiken</a> öffnen, «Export» antippen, CSV oder PDF wählen.</li>
       <li>Dasselbe bei den <a href="https://www.sihf.ch/de/game-center/liga/goaliestatistiken/1-1" target="_blank" rel="noopener">Goaliestatistiken</a>.</li>
