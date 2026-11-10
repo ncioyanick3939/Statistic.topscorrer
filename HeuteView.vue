@@ -4,6 +4,7 @@ import { TEAMS, MY_SQUAD } from './data.js'
 import { state, days, activeDay, todayLineup, setCash, openPlayer } from './store.js'
 import { gameOn } from './team.js'
 import { ownedRated } from './store.js'
+import ImportShot from './ImportShot.vue'
 const playN = (d) => ownedRated.value.filter((x) => !x.fc.inj && gameOn(x.p.team, d)).length
 import { dayLabel } from './model.js'
 const fmt = (n) => (n < 0 ? '−' : '') + String(Math.abs(Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g, "'")
@@ -25,6 +26,7 @@ const info = (x) => { const g = gameOn(x.p.team, activeDay.value); return g ? (g
     </div>
     <p v-if="minus">Du bekommst an Spieltagen <b>keine Punkte</b>, solange das Konto im Minus ist.</p>
     <p v-else-if="state.cash != null">Dein Konto ist im Plus. Du bekommst Punkte.</p>
+    <ImportShot v-if="state.ai && state.aiMode === 'claude'" mode="squad" />
     <div class="edit"><label for="cash">Kontostand ändern</label><input id="cash" type="number" step="1000" :value="state.cash" @change="setCash($event.target.value)" /></div>
   </section>
 

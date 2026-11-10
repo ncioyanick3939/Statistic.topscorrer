@@ -4,6 +4,7 @@ import baseData from './stats.json'
 import { MY_SQUAD } from './data.js'
 import { buildContext, rate, forecast, buildValueModel, iso, chDate } from './model.js'
 import { lineup, sellPlan, matchDays } from './team.js'
+import { matchName, money, parseRows as parseShotRows } from './shot.js'
 import { readExport } from './importers.js'
 
 const local = {
@@ -220,3 +221,34 @@ export const baseLineup = computed(() => lineup(ownedRated.value))
 export const plan = computed(() => (state.cash != null && state.cash < 0 ? sellPlan(ownedRated.value, state.keep, -state.cash) : null))
 export function toggleKeep(id) { const m = { ...state.keep }; if (m[id]) delete m[id]; else m[id] = 1; state.keep = m; persist('keep', 'tc-keep', m) }
 export function executePlan() { if (plan.value) plan.value.sold.map((x) => x.p.id).forEach((id) => sellPlayer(id)) }
+
+// ---- Screenshot lesen (nur in der Claude-Version) ----
+export async function readShot(file, mode) {
+  if (!sample) throw { code: 'no_ai' }
+  try { const lim = sample.limits ? await sample.limits() : null; if (lim && lim.images === false) throw { code: 'no_images' } } catch (e) { if (e && e.code === 'no_images') throw e }
+  const what = mode === 'market'
+    ? 'Das Bild zeigt den Transfermarkt der Fantasy-App Topscorer. Lies jeden Spieler mit Vorname Nachname und Marktwert in Franken ab.'
+    : 'Das Bild zeigt den Kader der Fantasy-App Topscorer. Lies jeden Spieler mit Vorname Nachname, Marktwert in Franken und Punkteschnitt (Ø) ab.'
+  const prompt = what + ' Antworte NUR mit einem JSON-Array, ohne Text davor oder danach, in der Form [{"name":"Vorname Nachname","value":123456,"avg":85}]. value ist eine ganze Zahl in Franken ohne Hochkomma. avg weglassen, wenn nicht sichtbar. Erfinde nichts, lass unlesbare Spieler weg.'
+  const r = await sample(prompt, { images: [file], modelTier: 'default', cache: false })
+  return parseShotRows(r.text)
+}
+export function applyShot(mode, rows) {
+  const done = []
+  const miss = []
+  rows.forEach((row) => {
+    const p = matchName(row.name, ctx.value.players)
+    const v = money(row.value)
+    if (!p || !v) { miss.push(row.name); return }
+    if (mode === 'market') { state.market = { ...state.market, [p.id]: v }; done.push(p.name); return }
+    if (!MY_SQUAD[p.id]) { miss.push(row.name + ' (nicht in deinem Kader)'); return }
+    const old = state.user[p.id] || {}
+    const vals = { ...old, mv: v }
+    if (row.avg != null && !isNaN(row.avg)) vals.avg = Math.round(+row.avg)
+    state.user = { ...state.user, [p.id]: vals }
+    done.push(p.name)
+  })
+  if (mode === 'market') persist('market', 'tc-market', state.market)
+  else persist('entries', 'tc-user', state.user)
+  return { done, miss }
+}

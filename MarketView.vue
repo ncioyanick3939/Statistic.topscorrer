@@ -1,7 +1,8 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { TEAMS } from './data.js'
-import { ctx, marketList, baseLineup, addMarket, removeMarket, clearMarket, openPlayer } from './store.js'
+import ImportShot from './ImportShot.vue'
+import { state, ctx, marketList, baseLineup, addMarket, removeMarket, clearMarket, openPlayer } from './store.js'
 const q = ref('')
 const picked = ref(null)
 const price = ref('')
@@ -36,6 +37,7 @@ function advice(x) {
   <section class="card">
     <h2>Transfermarkt heute</h2>
     <p class="small muted">Im Spiel stehen täglich 14 Spieler zur Auswahl. Trag hier die ein, die dich interessieren, mit ihrem Marktwert.</p>
+    <ImportShot v-if="state.ai && state.aiMode === 'claude'" mode="market" />
     <div class="add">
       <div><label for="mq">Spieler</label><input id="mq" type="search" autocomplete="off" placeholder="Name eingeben" v-model="q" @input="picked = null" /></div>
       <div class="sugg" v-if="hits.length"><button v-for="p in hits" :key="p.id" type="button" @click="picked = p; q = p.name">{{ p.name }} <small>{{ p.team }}</small></button></div>
