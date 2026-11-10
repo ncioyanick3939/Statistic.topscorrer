@@ -24,6 +24,7 @@ function limited(ip) {
 const send = (res, status, obj) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)) }
 
 async function ask(req, res) {
+  if (!KEY) return send(res, 503, { error: 'ai_not_configured' })
   let body = ''
   for await (const c of req) { body += c; if (body.length > 6e6) return send(res, 413, { error: 'zu gross' }) }
   let data
