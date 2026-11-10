@@ -4,9 +4,9 @@ function onFiles(e) { const f = [...e.target.files]; if (f.length) importFiles(f
 </script>
 
 <template>
-  <header>
-    <h1>Daten</h1>
-    <p class="muted small">Stand der Statistik: <b>{{ stand }}</b></p>
+  <header class="view-heading">
+    <div><p class="eyebrow">DATEN · QUALITÄT</p><h1>Daten-Center</h1><p class="muted small">Statistikstand {{ stand }}</p></div>
+    <span class="heading-mark" aria-hidden="true">▤</span>
   </header>
   <section class="card">
     <h2>Aktualisieren</h2>
