@@ -3,6 +3,7 @@ import { reactive, computed } from 'vue'
 import baseData from './stats.json'
 import { MY_SQUAD } from './data.js'
 import { buildContext, rate, forecast, buildValueModel, iso, chDate } from './model.js'
+import { lineup, sellPlan, matchDays } from './team.js'
 import { readExport } from './importers.js'
 
 const local = {
@@ -26,8 +27,8 @@ function applySquad(obj) {
 }
 
 export const state = reactive({
-  tab: 'spieler', query: '', current: null,
-  data: first, user: local.get('tc-user', {}), cash: (local.get('tc-squad', null) || {}).cash ?? null, market: local.get('tc-market', {}),
+  tab: 'heute', day: '', keep: local.get('tc-keep', { 'Schmid Sandro|FRI': 1, 'Kurashev Philipp|LHC': 1 }), query: '', current: null,
+  data: first, user: local.get('tc-user', {}), cash: (local.get('tc-squad', null) || {}).cash ?? -1770000, market: local.get('tc-market', {}),
   pos: 'S', team: '', mine: false, sortKey: 'pts', sortDir: -1, shown: 25,
   message: '', messageKind: '', cloud: false, ai: false, aiMode: '', needsCode: false, hasCode: !!local.get('tc-code', '')
 })
@@ -90,10 +91,12 @@ export async function connectCloud() {
   try {
     const [a, b] = await Promise.all([db.doc('state/stats').get(), db.doc('state/entries').get()])
     if (a.exists) { const d = JSON.parse(a.data().json); if (d && d.sk && d.go && d.date > state.data.date) state.data = d }
+    const kp = await db.doc('state/keep').get()
+    if (kp.exists) { const m = JSON.parse(kp.data().json); if (m && typeof m === 'object') state.keep = m }
     const mk = await db.doc('state/market').get()
     if (mk.exists) { const m = JSON.parse(mk.data().json); if (m && typeof m === 'object') state.market = m }
     const c = await db.doc('state/squad').get()
-    if (c.exists) { const q = JSON.parse(c.data().json); if (q && q.squad) { applySquad(q.squad); state.cash = q.cash ?? null } }
+    if (c.exists) { const q = JSON.parse(c.data().json); if (q && q.squad) { applySquad(q.squad); state.cash = q.cash ?? state.cash } }
     if (b.exists) { const u = JSON.parse(b.data().json); if (u && typeof u === 'object') state.user = u }
   } catch (e) { /* ohne Datenbank läuft die App mit den Gerätedaten weiter */ }
 }
@@ -207,3 +210,13 @@ export const marketList = computed(() => Object.keys(state.market).map((id) => r
 export const importsInLineup = computed(() => Object.values(MY_SQUAD).filter((m) => m[3] === 1 && m[4] === 1).length)
 
 const RULES = 'Regeln: Pro Spiel zählen Tor (Stürmer 60, Verteidiger 70, Goalie 100), Assist (40/50/55), Schuss aufs Tor 5, geblockter Schuss 10, Plus/Minus ±5, Strafen minus, Goalie-Paraden 4, Shutout 40, Eiszeit 1 pro Minute. Jeder Punkt bringt 50 Franken. Gebote auf dem Transfermarkt müssen mindestens dem Marktwert entsprechen, der Höchstbietende gewinnt, täglich sind nur 14 Spieler verfügbar. Das Konto darf bei Spielbeginn nicht im Minus sein, sonst gibt es an dem Spieltag keine Punkte. Aufstellung: 1 Goalie, 6 Verteidiger, 9 Stürmer, höchstens 6 Imports.'
+
+// ---- Ansicht «Heute» und «Markt» ----
+export const ownedRated = computed(() => rated.value.filter((x) => MY_SQUAD[x.p.id]))
+export const days = computed(() => matchDays(ctx.value.today))
+export const activeDay = computed(() => (days.value.includes(state.day) ? state.day : days.value[0] || ''))
+export const todayLineup = computed(() => lineup(ownedRated.value, activeDay.value || null))
+export const baseLineup = computed(() => lineup(ownedRated.value))
+export const plan = computed(() => (state.cash != null && state.cash < 0 ? sellPlan(ownedRated.value, state.keep, -state.cash) : null))
+export function toggleKeep(id) { const m = { ...state.keep }; if (m[id]) delete m[id]; else m[id] = 1; state.keep = m; persist('keep', 'tc-keep', m) }
+export function executePlan() { if (plan.value) plan.value.sold.map((x) => x.p.id).forEach((id) => sellPlayer(id)) }

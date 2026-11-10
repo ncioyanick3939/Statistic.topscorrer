@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { TEAMS } from './data.js'
-import { ctx, marketList, addMarket, removeMarket, clearMarket, openPlayer } from './store.js'
+import { ctx, marketList, baseLineup, addMarket, removeMarket, clearMarket, openPlayer } from './store.js'
 const q = ref('')
 const picked = ref(null)
 const price = ref('')
@@ -17,22 +17,27 @@ function add() {
   addMarket(picked.value.id, price.value)
   q.value = ''; price.value = ''; picked.value = null
 }
+// Bringt er mehr als mein schwächster Stammspieler auf seiner Position?
 function advice(x) {
-  if (x.w.max == null) return { cls: 'mid', t: 'keine Schätzung' }
-  if (!x.price) return { cls: 'mid', t: 'Preis eintragen' }
-  const r = x.w.max / x.price
-  return r >= 1.12 ? { cls: 'good', t: 'bieten bis ' + k(x.w.max) } : r >= 0.88 ? { cls: 'mid', t: 'knapp, bis ' + k(x.w.max) } : { cls: 'bad', t: 'zu teuer' }
+  if (x.w.max == null) return { cls: 'mid', t: 'unklar', sub: 'Für Goalies ausserhalb deines Kaders kann ich den Wert nicht schätzen.' }
+  const group = baseLineup.value.got[x.p.pos]
+  const worst = group.length ? group.reduce((m, e) => (e.v < m.v ? e : m)) : null
+  const gain = worst ? Math.round(x.w.avg - worst.v) : 0
+  const ok = !x.price || x.price <= x.w.max * 1.1
+  const vs = worst ? ' als ' + worst.x.p.name.split(' ')[0] : ''
+  if (gain >= 10 && ok) return { cls: 'good', t: 'bieten', sub: 'Etwa ' + gain + ' Punkte besser' + vs + '. Gebot bis ' + k(x.w.max) + '.' }
+  if (gain >= 0 && ok) return { cls: 'mid', t: 'knapp', sub: 'Nur wenig besser' + vs + '. Nur bieten, wenn du Platz hast.' }
+  if (!ok) return { cls: 'bad', t: 'zu teuer', sub: 'Zahle höchstens ' + k(x.w.max) + '.' }
+  return { cls: 'bad', t: 'nein', sub: 'Er hilft dir nicht weiter, du hast schon Bessere.' }
 }
 </script>
 
 <template>
   <section class="card">
     <h2>Transfermarkt heute</h2>
-    <p class="small muted">Im Spiel sind täglich nur 14 Spieler kaufbar, und das Gebot muss mindestens dem Marktwert entsprechen. Trag sie hier ein, dann sage ich dir, wen du ersteigern solltest.</p>
+    <p class="small muted">Im Spiel stehen täglich 14 Spieler zur Auswahl. Trag hier die ein, die dich interessieren, mit ihrem Marktwert.</p>
     <div class="add">
-      <div><label for="mq">Spieler</label>
-        <input id="mq" type="search" autocomplete="off" placeholder="Name eingeben" v-model="q" @input="picked = null" />
-      </div>
+      <div><label for="mq">Spieler</label><input id="mq" type="search" autocomplete="off" placeholder="Name eingeben" v-model="q" @input="picked = null" /></div>
       <div class="sugg" v-if="hits.length"><button v-for="p in hits" :key="p.id" type="button" @click="picked = p; q = p.name">{{ p.name }} <small>{{ p.team }}</small></button></div>
       <div v-if="picked" class="two">
         <div><label for="mp">Marktwert im Spiel</label><input id="mp" type="number" min="0" step="1000" v-model="price" placeholder="z. B. 350000" /></div>
@@ -41,9 +46,12 @@ function advice(x) {
     </div>
     <ul v-if="marketList.length" class="m">
       <li v-for="x in marketList" :key="x.p.id">
-        <button type="button" class="nm" @click="openPlayer(x.p.id)"><b>{{ x.p.name }}</b><span class="muted small">{{ TEAMS[x.p.team][0] }} · Preis {{ k(x.price) }} · Höchstpreis {{ k(x.w.max) }}</span></button>
-        <span class="chip" :class="advice(x).cls">{{ advice(x).t }}</span>
-        <button type="button" class="x" :aria-label="x.p.name + ' entfernen'" @click="removeMarket(x.p.id)">×</button>
+        <div class="head">
+          <button type="button" class="nm" @click="openPlayer(x.p.id)"><b>{{ x.p.name }}</b><span class="muted small">{{ TEAMS[x.p.team][0] }} · Preis {{ k(x.price) }}</span></button>
+          <span class="chip" :class="advice(x).cls">{{ advice(x).t }}</span>
+          <button type="button" class="x" :aria-label="x.p.name + ' entfernen'" @click="removeMarket(x.p.id)">×</button>
+        </div>
+        <p class="small muted">{{ advice(x).sub }}</p>
       </li>
     </ul>
     <button v-if="marketList.length" type="button" class="link" @click="clearMarket">Liste leeren (neuer Tag)</button>
@@ -53,12 +61,13 @@ function advice(x) {
 <style scoped>
 .add { display: flex; flex-direction: column; gap: 10px; }
 .sugg { display: flex; flex-wrap: wrap; gap: 6px; }
-.sugg button { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 0.9rem; }
+.sugg button { border: 2px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px; font-size: 0.92rem; }
 .sugg small { color: var(--muted); }
 .two { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
 .m { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.m li { display: grid; grid-template-columns: 1fr auto 28px; gap: 8px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.m li { padding: 12px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+.head { display: grid; grid-template-columns: 1fr auto 28px; gap: 8px; align-items: center; }
 .nm { background: none; border: 0; padding: 0; text-align: left; display: flex; flex-direction: column; min-width: 0; }
-.x { background: none; border: 0; font-size: 1.4rem; color: var(--muted); }
+.x { background: none; border: 0; font-size: 1.5rem; color: var(--muted); }
 .chip { white-space: nowrap; }
 </style>

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { TEAMS, MY_SQUAD, POSITION } from './data.js'
-import { state, closePlayer, saveOwnValues, ctx, buyPlayer, sellPlayer, replacementsFor, openPlayer } from './store.js'
+import { state, closePlayer, saveOwnValues, ctx, buyPlayer, sellPlayer, replacementsFor, plan } from './store.js'
 import PlayerRow from './PlayerRow.vue'
 import AskAI from './AskAI.vue'
 import ForecastGames from './ForecastGames.vue'
@@ -10,57 +10,43 @@ const props = defineProps({ x: Object })
 const p = computed(() => props.x.p)
 const r = computed(() => props.x.r)
 const fc = computed(() => props.x.fc)
+const w = computed(() => props.x.w)
 const team = computed(() => TEAMS[p.value.team])
 const goalie = computed(() => p.value.pos === 'G')
+const owned = computed(() => !!MY_SQUAD[p.value.id])
 const fmt = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, "'")
 
-const headline = computed(() => {
-  if (fc.value.inj) return ['0', 'Fällt aus', fc.value.inj]
-  if (goalie.value) return [fc.value.next.ga.toFixed(1), 'Gegentore pro Einsatz erwartet', 'Fangquote hochgerechnet ' + fc.value.next.sv.toFixed(1) + ' %, Einsatzchance ' + Math.round((fc.value.games[0]?.start ?? 0) * 100) + ' % pro Spiel.']
-  return [fc.value.next.pts.toFixed(1), 'Skorerpunkte in den nächsten ' + fc.value.n + ' Spielen', 'Davon ca. ' + fc.value.next.g.toFixed(1) + ' Tore und ' + fc.value.next.a.toFixed(1) + ' Assists. Im Topscorer-Spiel rund ' + Math.round(fc.value.next.fp) + ' Punkte.']
+const decision = computed(() => {
+  const x = props.x
+  if (owned.value) {
+    if (fc.value.inj) return { t: 'Verkaufen', cls: 'bad', s: 'Er ist verletzt und bringt dir zurzeit keine Punkte.' }
+    if (plan.value && plan.value.sold.some((y) => y.p.id === p.value.id)) return { t: 'Verkaufen', cls: 'bad', s: 'Er gehört zu den Spielern, die du am besten verkaufst, um wieder im Plus zu sein.' }
+    if (w.value.call === 'sell') return { t: 'Eher verkaufen', cls: 'mid', s: 'Er kostet im Spiel mehr, als er nach meiner Rechnung bringt.' }
+    return { t: 'Behalten', cls: 'good', s: 'Er bringt dir für seinen Preis genug Punkte.' }
+  }
+  if (fc.value.inj) return { t: 'Nicht kaufen', cls: 'bad', s: 'Er ist verletzt: ' + fc.value.inj }
+  if (r.value.score >= 70) return { t: 'Interessant', cls: 'good', s: w.value.max ? 'Bieten lohnt sich bis ' + fmt(w.value.max) + '. Darüber ist er zu teuer.' : 'Starke Werte. Schau auf den Preis im Spiel.' }
+  if (r.value.score >= 50) return { t: 'Beobachten', cls: 'mid', s: 'Solide, aber kein Muss. Nur bei einem guten Preis.' }
+  return { t: 'Nicht kaufen', cls: 'bad', s: 'Seine Werte sind zu schwach.' }
 })
-
-// Läuft der Spieler über oder unter dem, was die Rechnung langfristig erwartet?
-const form = computed(() => {
-  const f = fc.value
-  if (f.type !== 'S' || f.inj || p.value.gp < 5) return null
-  const d = f.rawPg - f.expPg
-  if (d > 0.18) return { cls: 'mid', t: 'Läuft über seinem Niveau (' + f.rawPg.toFixed(2) + ' statt ' + f.expPg.toFixed(2) + ' Punkte pro Spiel). Die Prognose rechnet mit einer Abkühlung.' }
-  if (d < -0.18) return { cls: 'good', t: 'Liegt unter seinem Niveau (' + f.rawPg.toFixed(2) + ' statt ' + f.expPg.toFixed(2) + ' Punkte pro Spiel). Die Prognose rechnet mit einer Erholung.' }
-  return { cls: 'good', t: 'Spielt so, wie es seine Werte erwarten lassen.' }
-})
-
-const season = computed(() => {
-  const f = fc.value
-  if (f.type !== 'S') return null
-  const now = p.value.g + p.value.a
-  const max = Math.max(f.season.hi, 1)
-  return { now, nowW: (now / max) * 100, loW: (f.season.lo / max) * 100, hiW: (f.season.hi / max) * 100, mid: (f.season.pts / max) * 100 }
-})
-
-const facts = computed(() => {
+const reasons = computed(() => [...r.value.plus.slice(0, 2).map((t) => ['+', 'good', t]), ...r.value.minus.slice(0, 2).map((t) => ['−', 'bad', t])])
+const line = computed(() => {
   const q = p.value
-  const a = goalie.value
-    ? [[q.gp, 'Einsätze'], [q.sv.toFixed(1) + '%', 'Fangquote'], [q.gaa.toFixed(2), 'GA/Spiel']]
-    : [[q.gp, 'Spiele'], [q.g, 'Tore'], [q.a, 'Assists'], [(q.pm > 0 ? '+' : '') + q.pm, '+/-']]
-  const f = r.value.f
-  if (f.avg != null) a.push([f.avg, 'Ø Topscorer'])
-  if (f.mv) a.push([fmt(f.mv), 'Marktwert'])
-  return a
+  return goalie.value ? q.gp + ' Einsätze · ' + q.sv.toFixed(1) + ' % Fangquote · ' + q.gaa.toFixed(2) + ' Gegentore pro Spiel' : q.gp + ' Spiele · ' + q.g + ' Tore · ' + q.a + ' Assists · ' + (q.pm > 0 ? '+' : '') + q.pm
 })
 
 const showOwn = ref(false)
-const owned = computed(() => !!MY_SQUAD[p.value.id])
 const confirm = ref('')
 const buyPrice = ref('')
 const ersatz = computed(() => (owned.value ? replacementsFor(p.value.id) : []))
 function doBuy() {
   const v = parseFloat(buyPrice.value)
-  buyPlayer(p.value.id, !isNaN(v) && v > 0 ? Math.round(v) : (props.x.w.max || 0))
+  buyPlayer(p.value.id, !isNaN(v) && v > 0 ? Math.round(v) : w.value.max || 0)
   confirm.value = ''; buyPrice.value = ''
 }
 function doSell() { sellPlayer(p.value.id); confirm.value = '' }
-const form2 = reactive({ avg: state.user[p.value.id]?.avg ?? '', mv: state.user[p.value.id]?.mv ?? '', trend: state.user[p.value.id]?.trend || '', toi: state.user[p.value.id]?.toi ?? '' })
+const u = state.user[p.value.id] || {}
+const form2 = reactive({ avg: u.avg ?? '', mv: u.mv ?? '', trend: u.trend || '', toi: u.toi ?? '' })
 function save() {
   const o = {}
   ;['avg', 'mv', 'toi'].forEach((k) => { const v = form2[k]; if (v !== '' && v != null && !isNaN(v)) o[k] = parseFloat(v) })
@@ -74,54 +60,41 @@ function save() {
   <button type="button" class="link back" @click="closePlayer">← Zurück</button>
 
   <section class="hero" :style="{ '--tb': team[1], '--tf': team[2] }">
-    <div class="tag">{{ team[0] }}<template v-if="r.f.imp"> · Import</template><template v-if="r.f.mine"> · in deinem Kader</template></div>
+    <div class="tag">{{ team[0] }}<template v-if="r.f.imp"> · Import</template><template v-if="owned"> · in deinem Kader</template></div>
     <h1>{{ p.name }}</h1>
-    <p class="pos">{{ POSITION[p.pos] }}</p>
+    <p class="pos">{{ POSITION[p.pos] }} · {{ line }}</p>
   </section>
 
   <section class="card">
-    <div class="verdictline">
-      <span class="chip" :class="r.cls">{{ r.verdict }}</span>
-      <span class="muted small">Note {{ r.score }} von 100</span>
-    </div>
-    <div class="big">
-      <b class="num">{{ headline[0] }}</b>
-      <span>{{ headline[1] }}</span>
-    </div>
-    <p class="muted">{{ headline[2] }}</p>
-    <p>{{ r.out }}</p>
+    <div class="verdict" :class="decision.cls"><b>{{ decision.t }}</b></div>
+    <p class="s">{{ decision.s }}</p>
+    <ul v-if="reasons.length" class="marks">
+      <li v-for="t in reasons" :key="t[2]"><i :class="t[1]">{{ t[0] }}</i><span>{{ t[2] }}</span></li>
+    </ul>
+    <p v-if="w.max != null" class="small muted">Höchstpreis <b>{{ fmt(w.max) }}</b><template v-if="w.mv"> · im Spiel {{ fmt(w.mv) }}</template> · gerechnet mit Ø {{ w.avg }}<template v-if="w.est"> (geschätzt, kann um rund 20 danebenliegen)</template>.</p>
   </section>
 
   <section class="card">
     <template v-if="!confirm">
-      <button v-if="!owned" type="button" class="btn" @click="confirm = 'buy'">Kaufen</button>
-      <button v-else type="button" class="btn" @click="confirm = 'sell'">Verkaufen</button>
-      <p class="small muted">Das trägt den Kauf oder Verkauf nur in dieser App ein. Im Topscorer-Spiel musst du ihn selbst kaufen oder verkaufen.</p>
+      <button v-if="!owned" type="button" class="btn" @click="confirm = 'buy'">Ich habe ihn gekauft</button>
+      <button v-else type="button" class="btn ghost" @click="confirm = 'sell'">Ich habe ihn verkauft</button>
+      <p class="small muted">Das trägt es nur in dieser App ein. Im Topscorer-Spiel machst du es selbst.</p>
     </template>
     <template v-else-if="confirm === 'buy'">
-      <div><label for="bp">Für wie viel hast du ihn gekauft?</label><input id="bp" type="number" min="0" step="1000" v-model="buyPrice" :placeholder="x.w.max ? String(x.w.max) : 'Preis im Spiel'" /></div>
-      <div class="two"><button type="button" class="btn" @click="doBuy">Kauf eintragen</button><button type="button" class="btn ghost" @click="confirm = ''">Abbrechen</button></div>
+      <div><label for="bp">Für wie viel hast du ihn gekauft?</label><input id="bp" type="number" min="0" step="1000" v-model="buyPrice" :placeholder="w.max ? String(w.max) : 'Preis im Spiel'" /></div>
+      <div class="two"><button type="button" class="btn" @click="doBuy">Eintragen</button><button type="button" class="btn ghost" @click="confirm = ''">Abbrechen</button></div>
     </template>
     <template v-else>
-      <p><b>{{ p.name }}</b> aus deinem Kader entfernen<template v-if="x.w.mv"> und {{ fmt(x.w.mv) }} gutschreiben</template>?</p>
-      <div class="two"><button type="button" class="btn" @click="doSell">Ja, verkauft</button><button type="button" class="btn ghost" @click="confirm = ''">Abbrechen</button></div>
+      <p><b>{{ p.name }}</b> aus deinem Kader entfernen<template v-if="w.mv"> und {{ fmt(w.mv) }} gutschreiben</template>?</p>
+      <div class="two"><button type="button" class="btn" @click="doSell">Ja</button><button type="button" class="btn ghost" @click="confirm = ''">Abbrechen</button></div>
     </template>
   </section>
 
-  <section v-if="x.w.max != null" class="card">
-    <h2>Preis im Topscorer-Spiel</h2>
-    <div class="big"><b class="num">{{ fmt(x.w.max) }}</b><span>Höchstpreis, den ich zahlen würde</span></div>
-    <p v-if="x.w.mv" :class="['note', x.w.call === 'sell' ? 'bad' : x.w.call === 'cheap' ? 'good' : 'mid']">
-      Im Spiel kostet er {{ fmt(x.w.mv) }}.
-      <template v-if="x.w.call === 'sell'">Das ist zu viel, ein Verkauf lohnt sich.</template>
-      <template v-else-if="x.w.call === 'cheap'">Das ist günstig, behalten oder kaufen.</template>
-      <template v-else>Das ist ein fairer Preis.</template>
-    </p>
-    <p v-else class="muted">Kaufen, wenn er im Spiel weniger kostet. Darüber zahlst du für Punkte, die er nicht bringt.</p>
-    <p class="small muted">Gerechnet mit einem Spiel-Schnitt von {{ x.w.avg }} Punkten<template v-if="x.w.est"> (aus der Statistik geschätzt, kann um rund 20 danebenliegen)</template><template v-else> (dein Wert, angepasst an Form und Verletzung)</template>. Ein Punkt Ø kostet im Spiel etwa {{ fmt(x.w.price) }}.</p>
+  <section v-if="ersatz.length" class="card">
+    <h2>Ersatz für {{ p.name.split(' ')[0] }}</h2>
+    <p class="small muted">Gleiche Position, nicht im Kader, nicht verletzt. Kaufbar nur, wenn sie auf dem Transfermarkt stehen.</p>
+    <div class="rlist"><PlayerRow v-for="y in ersatz" :key="y.p.id" :x="y" price /></div>
   </section>
-
-  <AskAI v-if="state.ai" :player="p.id" :name="p.name.split(' ')[0]" />
 
   <section v-if="fc.games.length && !fc.inj" class="card">
     <h2>Nächste Spiele</h2>
@@ -129,42 +102,14 @@ function save() {
     <p v-if="!ctx.scheduleOk" class="small muted">Der Spielplan ist nur bis 29.11.2026 hinterlegt.</p>
   </section>
 
-  <section v-if="season" class="card">
-    <h2>Bis Saisonende</h2>
-    <p><b class="num big2">{{ fc.season.pts }}</b> Skorerpunkte erwartet <span class="muted">({{ fc.season.g }} Tore, {{ fc.season.a }} Assists)</span></p>
-    <div class="range" role="img" :aria-label="'Aktuell ' + season.now + ', erwartet ' + fc.season.pts + ', Bandbreite ' + fc.season.lo + ' bis ' + fc.season.hi">
-      <i class="band" :style="{ left: season.loW + '%', width: season.hiW - season.loW + '%' }"></i>
-      <i class="now" :style="{ width: season.nowW + '%' }"></i>
-      <i class="exp" :style="{ left: season.mid + '%' }"></i>
-    </div>
-    <div class="legend small muted"><span>jetzt {{ season.now }}</span><span>Bandbreite {{ fc.season.lo }} bis {{ fc.season.hi }}</span></div>
-    <p class="small muted">Rund vier von fünf ähnlichen Spielern landen in dieser Bandbreite. Wenige Spiele ziehen den Wert zum Ligaschnitt.</p>
-  </section>
-
-  <section v-if="ersatz.length" class="card">
-    <h2>Ersatz für {{ p.name.split(' ')[0] }}</h2>
-    <p class="small muted">Gleiche Position, nicht im Kader, nicht verletzt. Der Höchstpreis liegt höchstens beim Preis dieses Spielers.</p>
-    <div class="rlist"><PlayerRow v-for="y in ersatz" :key="y.p.id" :x="y" price /></div>
-  </section>
+  <AskAI v-if="state.ai" :player="p.id" :name="p.name.split(' ')[0]" />
 
   <section class="card">
-    <div class="facts">
-      <div v-for="f in facts" :key="f[1]"><b class="num">{{ f[0] }}</b><span>{{ f[1] }}</span></div>
-    </div>
-    <p v-if="form" class="note" :class="form.cls">{{ form.t }}</p>
-    <ul v-if="r.plus.length || r.minus.length" class="marks">
-      <li v-for="t in r.plus" :key="'p' + t"><i class="good">+</i><span>{{ t }}</span></li>
-      <li v-for="t in r.minus" :key="'m' + t"><i class="bad">−</i><span>{{ t }}</span></li>
-    </ul>
-  </section>
-
-  <section class="card">
-    <button type="button" class="link" @click="showOwn = !showOwn">{{ showOwn ? 'Eingabe ausblenden' : 'Marktwert und Punkteschnitt aus dem Spiel eintragen' }}</button>
+    <button type="button" class="link" @click="showOwn = !showOwn">{{ showOwn ? 'Eingabe ausblenden' : 'Eigene Werte aus dem Spiel eintragen (Ø Punkte, Marktwert)' }}</button>
     <div v-if="showOwn" class="own">
       <div><label for="u-avg">Ø Punkte</label><input id="u-avg" type="number" min="0" step="1" v-model="form2.avg" :placeholder="r.f.avg ?? ''" /></div>
       <div><label for="u-mv">Marktwert</label><input id="u-mv" type="number" min="0" step="1" v-model="form2.mv" :placeholder="r.f.mv ?? ''" /></div>
       <div><label for="u-trend">Trend</label><select id="u-trend" v-model="form2.trend"><option value="">{{ r.f.mine ? 'wie Screenshot' : 'unbekannt' }}</option><option value="up">steigt</option><option value="flat">gleich</option><option value="down">fällt</option></select></div>
-      <div v-if="!goalie"><label for="u-toi">Eiszeit (Min.)</label><input id="u-toi" type="number" min="0" max="35" step="0.1" v-model="form2.toi" placeholder="z. B. 17.5" /></div>
       <button type="button" class="btn full" @click="save">Speichern und neu rechnen</button>
     </div>
   </section>
@@ -172,32 +117,18 @@ function save() {
 
 <style scoped>
 .back { align-self: flex-start; padding: 6px 0; }
-.hero { background: var(--tb); color: var(--tf); border-radius: 20px; padding: 20px 18px; display: flex; flex-direction: column; gap: 6px; }
+.hero { background: var(--tb); color: var(--tf); border-radius: 18px; padding: 20px 18px; display: flex; flex-direction: column; gap: 6px; }
 .hero h1 { font-size: 2.1rem; overflow-wrap: anywhere; }
-.tag { font-size: 0.82rem; font-weight: 700; opacity: 0.9; }
-.pos { opacity: 0.85; }
-.verdictline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.big { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.big b { font-family: var(--head); font-size: 3.4rem; font-weight: 800; line-height: 0.9; }
-.big span { font-weight: 700; flex: 1 1 140px; min-width: 0; }
-.big2 { font-family: var(--head); font-size: 1.9rem; }
-.range { position: relative; height: 14px; background: var(--soft); border-radius: 7px; overflow: hidden; }
-.range i { position: absolute; top: 0; bottom: 0; }
-.band { background: color-mix(in srgb, var(--accent) 30%, transparent); }
-.now { left: 0; background: var(--ink); opacity: 0.85; }
-.exp { width: 3px; background: var(--accent); }
-.legend { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.facts div { background: var(--soft); border-radius: 12px; padding: 9px 10px; min-width: 0; display: flex; flex-direction: column; }
-.facts b { font-family: var(--head); font-size: 1.25rem; }
-.facts span { font-size: 0.72rem; color: var(--muted); font-weight: 700; }
-.note { padding: 10px 12px; border-radius: 12px; font-size: 0.92rem; }
-.marks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
-.marks li { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: start; }
-.marks i { font-style: normal; font-weight: 800; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; }
+.tag { font-size: 0.85rem; font-weight: 700; opacity: 0.9; }
+.pos { opacity: 0.9; font-size: 0.95rem; }
+.verdict { border-radius: 14px; padding: 14px 16px; }
+.verdict b { font-family: var(--head); font-size: 2rem; font-weight: 800; }
+.s { font-size: 1.05rem; }
+.marks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.marks li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; }
+.marks i { font-style: normal; font-weight: 800; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .rlist { display: flex; flex-direction: column; gap: 8px; }
 .own { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .full { grid-column: 1 / -1; }
-@media (max-width: 440px) { .facts { grid-template-columns: 1fr 1fr; } .big b { font-size: 2.8rem; } }
 </style>

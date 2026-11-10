@@ -7,7 +7,7 @@ const num = (v) => (v === '' || v == null || isNaN(v) ? null : +v)
 export const iso = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
 export const chDate = (s) => s.slice(8, 10) + '.' + s.slice(5, 7) + '.' + s.slice(0, 4)
 const WEEKDAY = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
-const dayLabel = (s) => WEEKDAY[new Date(s + 'T12:00:00').getDay()] + ' ' + s.slice(8, 10) + '.' + s.slice(5, 7) + '.'
+export const dayLabel = (s) => WEEKDAY[new Date(s + 'T12:00:00').getDay()] + ' ' + s.slice(8, 10) + '.' + s.slice(5, 7) + '.'
 
 // Bereitet die Rohdaten auf: Spieler, Teamwerte, Liga-Durchschnitte, kommende Spiele.
 export function buildContext(data, now = new Date()) {
@@ -243,9 +243,11 @@ export function buildValueModel(list, ctx, user) {
   const known = list.filter((x) => fantasy(x.p, user).avg != null && x.p.gp >= 5)
   const price = median(known.filter((x) => fantasy(x.p, user).mv && x.p.gp >= 12).map((x) => fantasy(x.p, user).mv / fantasy(x.p, user).avg)) || 6200
   const fit = {}
+  const cap = {}
   ;['F', 'D'].forEach((pos) => {
     const pts = known.filter((x) => x.p.pos === pos && x.fc.type === 'S').map((x) => [skill(x), fantasy(x.p, user).avg])
     fit[pos] = pts.length >= 4 ? line(pts) : null
+    cap[pos] = pts.length ? Math.min(115, Math.max(...pts.map((q) => q[1])) * 1.1) : 100
   })
   const round = (v) => Math.round(v / 5000) * 5000
   const fn = (x) => {
@@ -255,7 +257,7 @@ export function buildValueModel(list, ctx, user) {
     if (avg == null) {
       const l = fit[x.p.pos]
       if (!l || x.fc.type !== 'S') return { avg: null, est: false, max: null, mv: f.mv, call: null, price }
-      avg = Math.max(15, Math.min(115, l.a + l.b * skill(x)))
+      avg = Math.max(15, Math.min(cap[x.p.pos], l.a + l.b * skill(x)))
       est = true
     } else if (x.fc.type === 'S' && x.p.gp >= 5 && x.fc.rawPg > 0) {
       avg *= Math.max(0.85, Math.min(1.1, x.fc.expPg / x.fc.rawPg)) // wer über seinem Niveau läuft, verliert Schnitt
