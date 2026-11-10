@@ -1,7 +1,9 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { TEAMS, MY_SQUAD, POSITION } from './data.js'
-import { state, closePlayer, saveOwnValues, ctx } from './store.js'
+import { state, closePlayer, saveOwnValues, ctx, buyPlayer, sellPlayer, replacementsFor, openPlayer } from './store.js'
+import PlayerRow from './PlayerRow.vue'
+import AskAI from './AskAI.vue'
 import ForecastGames from './ForecastGames.vue'
 
 const props = defineProps({ x: Object })
@@ -48,6 +50,16 @@ const facts = computed(() => {
 })
 
 const showOwn = ref(false)
+const owned = computed(() => !!MY_SQUAD[p.value.id])
+const confirm = ref('')
+const buyPrice = ref('')
+const ersatz = computed(() => (owned.value ? replacementsFor(p.value.id) : []))
+function doBuy() {
+  const v = parseFloat(buyPrice.value)
+  buyPlayer(p.value.id, !isNaN(v) && v > 0 ? Math.round(v) : (props.x.w.max || 0))
+  confirm.value = ''; buyPrice.value = ''
+}
+function doSell() { sellPlayer(p.value.id); confirm.value = '' }
 const form2 = reactive({ avg: state.user[p.value.id]?.avg ?? '', mv: state.user[p.value.id]?.mv ?? '', trend: state.user[p.value.id]?.trend || '', toi: state.user[p.value.id]?.toi ?? '' })
 function save() {
   const o = {}
@@ -80,6 +92,22 @@ function save() {
     <p>{{ r.out }}</p>
   </section>
 
+  <section class="card">
+    <template v-if="!confirm">
+      <button v-if="!owned" type="button" class="btn" @click="confirm = 'buy'">Kaufen</button>
+      <button v-else type="button" class="btn" @click="confirm = 'sell'">Verkaufen</button>
+      <p class="small muted">Das trägt den Kauf oder Verkauf nur in dieser App ein. Im Topscorer-Spiel musst du ihn selbst kaufen oder verkaufen.</p>
+    </template>
+    <template v-else-if="confirm === 'buy'">
+      <div><label for="bp">Für wie viel hast du ihn gekauft?</label><input id="bp" type="number" min="0" step="1000" v-model="buyPrice" :placeholder="x.w.max ? String(x.w.max) : 'Preis im Spiel'" /></div>
+      <div class="two"><button type="button" class="btn" @click="doBuy">Kauf eintragen</button><button type="button" class="btn ghost" @click="confirm = ''">Abbrechen</button></div>
+    </template>
+    <template v-else>
+      <p><b>{{ p.name }}</b> aus deinem Kader entfernen<template v-if="x.w.mv"> und {{ fmt(x.w.mv) }} gutschreiben</template>?</p>
+      <div class="two"><button type="button" class="btn" @click="doSell">Ja, verkauft</button><button type="button" class="btn ghost" @click="confirm = ''">Abbrechen</button></div>
+    </template>
+  </section>
+
   <section v-if="x.w.max != null" class="card">
     <h2>Preis im Topscorer-Spiel</h2>
     <div class="big"><b class="num">{{ fmt(x.w.max) }}</b><span>Höchstpreis, den ich zahlen würde</span></div>
@@ -92,6 +120,8 @@ function save() {
     <p v-else class="muted">Kaufen, wenn er im Spiel weniger kostet. Darüber zahlst du für Punkte, die er nicht bringt.</p>
     <p class="small muted">Gerechnet mit einem Spiel-Schnitt von {{ x.w.avg }} Punkten<template v-if="x.w.est"> (aus der Statistik geschätzt, kann um rund 20 danebenliegen)</template><template v-else> (dein Wert, angepasst an Form und Verletzung)</template>. Ein Punkt Ø kostet im Spiel etwa {{ fmt(x.w.price) }}.</p>
   </section>
+
+  <AskAI v-if="state.ai" :player="p.id" :name="p.name.split(' ')[0]" />
 
   <section v-if="fc.games.length && !fc.inj" class="card">
     <h2>Nächste Spiele</h2>
@@ -109,6 +139,12 @@ function save() {
     </div>
     <div class="legend small muted"><span>jetzt {{ season.now }}</span><span>Bandbreite {{ fc.season.lo }} bis {{ fc.season.hi }}</span></div>
     <p class="small muted">Rund vier von fünf ähnlichen Spielern landen in dieser Bandbreite. Wenige Spiele ziehen den Wert zum Ligaschnitt.</p>
+  </section>
+
+  <section v-if="ersatz.length" class="card">
+    <h2>Ersatz für {{ p.name.split(' ')[0] }}</h2>
+    <p class="small muted">Gleiche Position, nicht im Kader, nicht verletzt. Der Höchstpreis liegt höchstens beim Preis dieses Spielers.</p>
+    <div class="rlist"><PlayerRow v-for="y in ersatz" :key="y.p.id" :x="y" price /></div>
   </section>
 
   <section class="card">
@@ -159,6 +195,8 @@ function save() {
 .marks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
 .marks li { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: start; }
 .marks i { font-style: normal; font-weight: 800; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rlist { display: flex; flex-direction: column; gap: 8px; }
 .own { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .full { grid-column: 1 / -1; }
 @media (max-width: 440px) { .facts { grid-template-columns: 1fr 1fr; } .big b { font-size: 2.8rem; } }

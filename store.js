@@ -16,11 +16,20 @@ let first = baseData
   if (saved && saved.date > first.date && saved.sk && saved.go) first = saved
 }
 
+function applySquad(obj) {
+  Object.keys(MY_SQUAD).forEach((k) => delete MY_SQUAD[k])
+  Object.assign(MY_SQUAD, obj)
+}
+{
+  const saved = local.get('tc-squad', null)
+  if (saved && saved.squad) applySquad(saved.squad)
+}
+
 export const state = reactive({
   tab: 'spieler', query: '', current: null,
-  data: first, user: local.get('tc-user', {}),
+  data: first, user: local.get('tc-user', {}), cash: (local.get('tc-squad', null) || {}).cash ?? null,
   pos: 'S', team: '', mine: false, sortKey: 'pts', sortDir: -1, shown: 25,
-  message: '', messageKind: '', cloud: false
+  message: '', messageKind: '', cloud: false, ai: false
 })
 
 export const ctx = computed(() => buildContext(state.data))
@@ -61,13 +70,22 @@ function persist(doc, key, value) {
   return writing
 }
 
+let sample = null
+async function connectAI() {
+  try { sample = await (window.claude && window.claude.use ? window.claude.use('sample') : null) } catch (e) { sample = null }
+  state.ai = !!sample
+}
+
 export async function connectCloud() {
+  connectAI()
   try { db = await (window.claude && window.claude.use ? window.claude.use('db') : null) } catch (e) { db = null }
   if (!db) return
   state.cloud = true
   try {
     const [a, b] = await Promise.all([db.doc('state/stats').get(), db.doc('state/entries').get()])
     if (a.exists) { const d = JSON.parse(a.data().json); if (d && d.sk && d.go && d.date > state.data.date) state.data = d }
+    const c = await db.doc('state/squad').get()
+    if (c.exists) { const q = JSON.parse(c.data().json); if (q && q.squad) { applySquad(q.squad); state.cash = q.cash ?? null } }
     if (b.exists) { const u = JSON.parse(b.data().json); if (u && typeof u === 'object') state.user = u }
   } catch (e) { /* ohne Datenbank läuft die App mit den Gerätedaten weiter */ }
 }
@@ -108,4 +126,59 @@ export async function importFiles(files) {
   } catch (e) {
     say('Die Datei liess sich nicht lesen. Bitte nochmals exportieren und erneut versuchen.', 'err')
   }
+}
+
+function saveSquad() { persist('squad', 'tc-squad', { squad: JSON.parse(JSON.stringify(MY_SQUAD)), cash: state.cash }) }
+export function setCash(v) { state.cash = v === '' || v == null || isNaN(v) ? null : Math.round(+v); saveSquad() }
+export function buyPlayer(id, price) {
+  const x = ratedById.value[id]
+  if (!x || MY_SQUAD[id]) return
+  const known = x.r.f.avg
+  MY_SQUAD[id] = [known ?? null, price, '', 1, 0]
+  if (state.cash != null) state.cash -= price
+  saveSquad()
+}
+export function sellPlayer(id) {
+  const m = MY_SQUAD[id]
+  if (!m) return
+  if (state.cash != null) state.cash += m[1] || 0
+  delete MY_SQUAD[id]
+  saveSquad()
+}
+// Ersatz: gleiche Position, nicht im Kader, nicht verletzt, höchstens zum Preis des Spielers
+export function replacementsFor(id) {
+  const x = ratedById.value[id]
+  if (!x) return []
+  const cap = x.w.mv || x.w.max
+  const ok = rated.value.filter((y) => y.p.pos === x.p.pos && y.p.id !== id && !MY_SQUAD[y.p.id] && !y.fc.inj && y.p.gp >= 8)
+  if (x.p.pos === 'G') return ok.sort((a, b) => b.r.score - a.r.score).slice(0, 4)
+  const cheap = ok.filter((y) => y.w.max != null && y.w.max <= cap * 1.05)
+  return cheap.sort((a, b) => b.w.avg - a.w.avg).slice(0, 4)
+}
+
+// ---- KI: bekommt deinen Kader und die Zahlen dieser App als Grundlage ----
+const k = (n) => (n == null ? '?' : Math.round(n / 1000) + 'k')
+const line = (x) => {
+  const p = x.p
+  const stat = p.pos === 'G' ? p.gp + ' Einsätze, ' + p.sv.toFixed(1) + '% Fangquote, ' + p.gaa.toFixed(2) + ' GA/Spiel' : p.gp + ' Spiele, ' + p.g + ' Tore, ' + p.a + ' Assists, ' + p.pm + ' +/-'
+  const fc = x.fc.inj ? 'verletzt: ' + x.fc.inj : x.fc.type === 'G' ? 'erwartet ' + x.fc.next.ga.toFixed(1) + ' Gegentore/Einsatz' : x.fc.next.pts.toFixed(1) + ' Punkte in ' + x.fc.n + ' Spielen erwartet'
+  const w = x.w.max != null ? 'Höchstpreis ' + k(x.w.max) + (x.w.mv ? ', Preis im Spiel ' + k(x.w.mv) : '') + ', Ø ' + x.w.avg + (x.w.est ? ' (geschätzt)' : '') : 'ohne Preis-Schätzung'
+  return '- ' + p.name + ' (' + p.pos + ', ' + p.team + '): ' + stat + '; Note ' + x.r.score + '; ' + fc + '; ' + w
+}
+function aiData(playerId) {
+  const mine = mySquad.value.map(line).join('\n')
+  const pool = rated.value.filter((x) => x.w.avg != null && !MY_SQUAD[x.p.id] && !x.fc.inj && x.p.gp >= 8 && x.p.pos !== 'G').sort((a, b) => b.w.avg - a.w.avg).slice(0, 25).map(line).join('\n')
+  const goalies = rated.value.filter((x) => x.p.pos === 'G' && !MY_SQUAD[x.p.id] && x.p.gp >= 6).sort((a, b) => b.r.score - a.r.score).slice(0, 5).map(line).join('\n')
+  let focus = ''
+  if (playerId && ratedById.value[playerId]) {
+    const x = ratedById.value[playerId]
+    focus = '\nDer Spieler, um den es geht:\n' + line(x) + '\nPlus: ' + x.r.plus.join('; ') + '\nMinus: ' + x.r.minus.join('; ') + '\nErsatz-Kandidaten:\n' + replacementsFor(playerId).map(line).join('\n')
+  }
+  return 'Statistik-Stand: ' + chDate(state.data.date) + '. Kontostand im Spiel: ' + (state.cash == null ? 'unbekannt' : state.cash) + '.\nDEIN KADER:\n' + mine + '\nBESTE FELDSPIELER ZUM KAUFEN (nicht im Kader):\n' + pool + '\nGOALIES ZUM KAUFEN:\n' + goalies + focus
+}
+export async function askAI(question, playerId, onText) {
+  if (!sample) throw new Error('KI nicht verfügbar')
+  const prompt = 'Du hilfst einem Schweizer Fan beim Fantasy-Spiel «Topscorer» zur National League 2026/27. Antworte auf Deutsch (Schweizer Rechtschreibung, kein ß), kurz (höchstens 150 Wörter), ohne Markdown-Zeichen, mit klaren Namen und Zahlen. Stütze dich nur auf die Daten unten. Der Höchstpreis ist eine Schätzung aus dem Spiel-Schnitt. Wenn etwas fehlt oder unsicher ist, sag es offen. Gib keine Garantien.\n\n' + aiData(playerId) + '\n\nFRAGE: ' + question
+  const r = await sample(prompt, { onText: ({ text }) => onText && onText(text), modelTier: 'default', cache: false })
+  return r.text
 }

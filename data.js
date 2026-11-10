@@ -1,3 +1,4 @@
+import { reactive } from 'vue'
 // Feste Angaben: Teams mit Farben, Spielplan, dein Kader aus dem Topscorer-Spiel.
 
 // Name, Trikotfarbe, Schriftfarbe darauf
@@ -48,7 +49,7 @@ export const SCHEDULE_END = '2026-11-29'
 export const SEASON_GAMES = 52
 
 // Dein Kader (Screenshots vom 10.11.): Ø Punkte, Marktwert, Trend, in der Aufstellung, Import
-export const MY_SQUAD = {
+export const MY_SQUAD = reactive({
   'Waeber Ludovic|FRI': [113, 550639, 'down', 1, 0],
   'Nyffeler Melvin|SCRJ': [69, 212671, 'up', 0, 0],
   'Säteri Harri|EHCB': [76, 371068, 'up', 0, 1],
@@ -70,7 +71,7 @@ export const MY_SQUAD = {
   'Müller Marco|SCB': [43, 261920, 'up', 1, 0],
   'Simic Axel|LHC': [55, 354875, 'down', 0, 0],
   'Vermin Joël|EHCB': [32, 199620, 'flat', 1, 0]
-}
+})
 
 // Verletzung mit Ablaufdatum, danach verschwindet der Hinweis von selbst
 export const INJURED = {

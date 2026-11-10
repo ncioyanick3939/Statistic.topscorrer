@@ -1,5 +1,6 @@
 <script setup>
-import { buyList, sellList } from './store.js'
+import { buyList, sellList, state } from './store.js'
+import AskAI from './AskAI.vue'
 import PlayerRow from './PlayerRow.vue'
 </script>
 
@@ -8,6 +9,8 @@ import PlayerRow from './PlayerRow.vue'
     <h1>Tipps</h1>
     <p class="muted small">Rechts steht der Höchstpreis: Darüber lohnt sich der Spieler im Topscorer-Spiel nicht mehr.</p>
   </header>
+
+  <AskAI v-if="state.ai" />
 
   <section>
     <h2>Kaufen, wenn er weniger kostet</h2>
