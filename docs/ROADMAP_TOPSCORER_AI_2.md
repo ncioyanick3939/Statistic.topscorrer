@@ -36,7 +36,7 @@
 - [ ] KI nur mit verifizierten App-Daten und klaren Grenzen einsetzen
 
 ## Phase 5 — Release
-- [ ] Build und automatisierte Tests ausführen (CI-Workflow eingerichtet, Lauf noch zu verifizieren)
+- [x] Build und automatisierte Tests über GitHub Actions erfolgreich ausgeführt (Node 22, npm ci, npm test, npm run build; Push- und Pull-Request-Lauf erfolgreich)
 - [ ] Render-Deploy und Healthcheck prüfen
 - [ ] Datenbank-Backup und Rollback testen
 - [ ] Mobile und Desktop Smoke-Tests durchführen
@@ -45,7 +45,6 @@
 - Render-Service-URL und verwendeter Service-Typ
 - Verfügbare und erlaubte Datenquellen für die Liga
 - Welche Funktionen zwingend erhalten bleiben müssen
-
 
 ## Bereits umgesetzt
 - [x] Ice-Blue-Design, Team-Cockpit, Seitenüberschriften und Mobile-Navigation
