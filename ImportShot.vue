@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { readShot, applyShot } from '../lib/store.js'
+import { readShot, applyShot } from './store.js'
 const props = defineProps({ mode: String })
 const busy = ref(false)
 const msg = ref('')
