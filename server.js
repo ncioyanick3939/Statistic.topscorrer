@@ -48,9 +48,13 @@ http.createServer((req, res) => {
   const url = (req.url || '/').split('?')[0]
   if (url === '/api/status') return send(res, 200, { ai: !!KEY, needsCode: !!CODE })
   if (url === '/api/ask' && req.method === 'POST') return ask(req, res)
-  fs.readFile(path.join(dir, 'index.html'), (err, buf) => {
+  const TYPES = { '.png': 'image/png', '.webmanifest': 'application/manifest+json', '.html': 'text/html; charset=utf-8' }
+  const clean = path.normalize(url).replace(/^(\.\.[/\\])+/, '')
+  let file = path.join(dir, clean)
+  if (!file.startsWith(dir) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(dir, 'index.html')
+  fs.readFile(file, (err, buf) => {
     if (err) { res.writeHead(500); return res.end('Noch nicht gebaut. Bitte zuerst npm run build ausführen.') }
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'text/html; charset=utf-8' })
     res.end(buf)
   })
 }).listen(PORT, () => console.log('läuft auf Port ' + PORT))
