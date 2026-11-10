@@ -32,6 +32,7 @@ async function ask(req, res) {
   for await (const c of req) { body += c; if (body.length > 6e6) return send(res, 413, { error: 'zu gross' }) }
   let data
   try { data = JSON.parse(body) } catch (e) { return send(res, 400, { error: 'ungültig' }) }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return send(res, 400, { error: 'invalid_request' })
   if (CODE && data.code !== CODE) return send(res, 401, { error: 'bad_code' })
   const invalid = validateAskPayload(data)
   if (invalid) return send(res, 400, { error: invalid })
