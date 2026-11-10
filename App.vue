@@ -27,8 +27,9 @@ onMounted(connectCloud)
 </template>
 
 <style>
-.brand-kicker {
+.top b .brand-kicker {
   display: block;
+  margin-top: 0;
   margin-bottom: 7px;
   color: #79d9e9;
   font-family: var(--body);
