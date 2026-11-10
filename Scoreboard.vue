@@ -27,11 +27,6 @@ const minus = computed(() => props.cash != null && props.cash < 0)
       <b class="led big">{{ shown }}</b>
       <span class="cap">Punkte · {{ playing }} von 16 spielen</span>
     </div>
-    <div class="cell mid">
-      <span class="cap">Wert in Franken</span>
-      <b class="led">{{ fmt(shown * 50) }}</b>
-      <span class="cap">1 Punkt = 50 CHF</span>
-    </div>
     <div class="cell" :class="{ pen: minus }">
       <span class="cap"><i class="lamp" :class="{ on: minus }" aria-hidden="true"></i>Konto</span>
       <b class="led">{{ cash == null ? '–' : fmt(cash) }}</b>
@@ -53,7 +48,7 @@ const minus = computed(() => props.cash != null && props.cash < 0)
 @keyframes blink { 50% { opacity: .25; } }
 @media (max-width: 480px) { .led { font-size: 1.45rem; } .led.big { font-size: 3.6rem; } }
 @media (min-width: 768px) {
-  .board { grid-template-columns: 1.2fr 1fr 1fr; }
+  .board { grid-template-columns: 1.4fr 1fr; }
   .cell:first-child { grid-column: auto; align-items: flex-start; text-align: left; }
   .led { font-size: 2.2rem; }
   .led.big { font-size: 5rem; }
