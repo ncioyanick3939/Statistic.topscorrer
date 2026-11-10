@@ -7,10 +7,11 @@ import HeuteView from './HeuteView.vue'
 import MarktView from './MarktView.vue'
 import SpielerView from './SpielerView.vue'
 import PlayerDetail from './PlayerDetail.vue'
+import LigaView from './LigaView.vue'
 import DataView from './DataView.vue'
 
 onMounted(connectCloud)
-const wide = computed(() => state.tab === 'heute' || state.tab === 'markt' || (state.tab === 'spieler' && !current.value))
+const wide = computed(() => state.tab === 'heute' || state.tab === 'markt' || state.tab === 'liga' || (state.tab === 'spieler' && !current.value))
 </script>
 
 <template>
@@ -20,6 +21,7 @@ const wide = computed(() => state.tab === 'heute' || state.tab === 'markt' || (s
     <HeuteView v-else-if="state.tab === 'heute'" />
     <MarktView v-else-if="state.tab === 'markt'" />
     <SpielerView v-else-if="state.tab === 'spieler'" />
+    <LigaView v-else-if="state.tab === 'liga'" />
     <DataView v-else />
   </main>
   <TabBar />
