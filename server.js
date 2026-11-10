@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { contentType, resolveStaticPath } from './static-files.js'
+import { readDatasetStatus } from './dataset-status.js'
 
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'dist')
 const KEY = process.env.ANTHROPIC_API_KEY || ''
@@ -53,6 +54,11 @@ async function ask(req, res) {
 http.createServer((req, res) => {
   const url = (req.url || '/').split('?')[0]
   if (url === '/api/status') return send(res, 200, { ai: !!KEY, needsCode: !!CODE })
+  if (url === '/api/data-status') {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, { error: 'method_not_allowed' })
+    try { return send(res, 200, { source: 'bundled_snapshot', ...readDatasetStatus(path.dirname(fileURLToPath(import.meta.url))) }) }
+    catch { return send(res, 503, { error: 'dataset_unavailable' }) }
+  }
   if (url === '/api/ask' && req.method === 'POST') return ask(req, res)
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, { error: 'method_not_allowed' })
   const resolved = resolveStaticPath(dir, url)
