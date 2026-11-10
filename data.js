@@ -85,3 +85,11 @@ export const NOTES = {
 }
 
 export const POSITION = { F: 'Stürmer', D: 'Verteidiger', G: 'Torhüter' }
+
+// Rückennummern deiner Spieler, aus den Kader-Screenshots vom 10.11. Weitere liest der Screenshot-Import mit.
+export const NUMBERS = {
+  'Waeber Ludovic|FRI': 35, 'Nyffeler Melvin|SCRJ': 60, 'Säteri Harri|EHCB': 35, 'Carrick Connor|LHC': 5, 'Balestra Nic|SCB': 34,
+  'Weber Yannick|ZSC': 6, 'Bisig Robin|SCRJ': 32, 'Riva Elia|EVZ': 37, 'Gernat Martin|HCD': 28, 'Aebischer David|HCL': 26,
+  'Schmid Sandro|FRI': 73, 'Zadina Filip|HCD': 18, 'Borgström Henrik|FRI': 21, 'Kubalik Dominik|EVZ': 81, 'Kurashev Philipp|LHC': 23,
+  'Rajala Toni|EHCB': 25, 'Hofmann Gregory|EVZ': 15, 'Björninen Hannes|SCL': 11, 'Müller Marco|SCB': 83, 'Simic Axel|LHC': 28, 'Vermin Joël|EHCB': 89
+}

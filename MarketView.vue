@@ -83,7 +83,7 @@ function advice(x) {
 .nm { background: none; border: 0; padding: 0; text-align: left; display: flex; flex-direction: column; min-width: 0; }
 .x { background: none; border: 0; font-size: 1.5rem; color: var(--muted); }
 .chip { white-space: nowrap; }
-.bid { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 12px; background: #0a1120; border: 1px solid var(--line); }
+.bid { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 12px; background: #141d36; border: 1px solid var(--line); }
 .bid-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .bid .led { color: var(--led); font-size: 1.2rem; }
 .bid input[type=range] { padding: 0; accent-color: var(--accent); }

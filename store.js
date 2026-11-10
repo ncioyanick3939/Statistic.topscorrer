@@ -1,7 +1,7 @@
 // Gemeinsamer Zustand der App: Daten, Auswahl, Filter. Alle Komponenten lesen von hier.
 import { reactive, computed } from 'vue'
 import baseData from './stats.json'
-import { MY_SQUAD } from './data.js'
+import { MY_SQUAD, NUMBERS } from './data.js'
 import { buildContext, rate, forecast, buildValueModel, iso, chDate } from './model.js'
 import { lineup, sellPlan, matchDays, weekGames } from './team.js'
 import { matchName, money, parseRows as parseShotRows } from './shot.js'
@@ -51,6 +51,8 @@ export const hits = computed(() => {
   const words = v.split(/\s+/)
   return ctx.value.players.filter((p) => { const n = p.name.toLowerCase(); return words.every((w) => n.includes(w)) })
 })
+// Rückennummer: eigene Eingabe oder Import vor der festen Liste
+export const numberOf = (id) => (state.user[id] && state.user[id].no) || NUMBERS[id] || null
 export const stand = computed(() => chDate(state.data.date))
 
 export function openPlayer(id) {
@@ -253,9 +255,9 @@ export function executePlan() { if (plan.value) plan.value.sold.map((x) => x.p.i
 // ---- Screenshot lesen (nur in der Claude-Version) ----
 function shotPrompt(mode) {
   const what = mode === 'market'
-    ? 'Das Bild zeigt den Transfermarkt der Fantasy-App Topscorer. Lies jeden Spieler mit Vorname Nachname und Marktwert in Franken ab.'
-    : 'Das Bild zeigt den Kader der Fantasy-App Topscorer. Lies jeden Spieler mit Vorname Nachname, Marktwert in Franken und Punkteschnitt (Ø) ab.'
-  return what + ' Antworte NUR mit einem JSON-Array, ohne Text davor oder danach, in der Form [{"name":"Vorname Nachname","value":123456,"avg":85}]. value ist eine ganze Zahl in Franken ohne Hochkomma. avg weglassen, wenn nicht sichtbar. Erfinde nichts, lass unlesbare Spieler weg.'
+    ? 'Das Bild zeigt den Transfermarkt der Fantasy-App Topscorer. Lies jeden Spieler mit Vorname Nachname, Marktwert in Franken und Rückennummer (die Zahl nach dem #) ab.'
+    : 'Das Bild zeigt den Kader der Fantasy-App Topscorer. Lies jeden Spieler mit Vorname Nachname, Marktwert in Franken, Punkteschnitt (Ø) und Rückennummer (die Zahl nach dem #) ab.'
+  return what + ' Antworte NUR mit einem JSON-Array, ohne Text davor oder danach, in der Form [{"name":"Vorname Nachname","value":123456,"avg":85,"number":26}]. value ist eine ganze Zahl in Franken ohne Hochkomma. avg und number weglassen, wenn nicht sichtbar. Erfinde nichts, lass unlesbare Spieler weg.'
 }
 export async function readShot(file, mode) {
   if (!sample && state.aiMode !== 'server') throw { code: 'no_ai' }
@@ -274,15 +276,20 @@ export function applyShot(mode, rows) {
     const p = matchName(row.name, ctx.value.players)
     const v = money(row.value)
     if (!p || !v) { miss.push(row.name); return }
-    if (mode === 'market') { state.market = { ...state.market, [p.id]: v }; done.push(p.name); return }
+    if (mode === 'market') {
+      state.market = { ...state.market, [p.id]: v }
+      if (row.number != null && !isNaN(row.number)) state.user = { ...state.user, [p.id]: { ...(state.user[p.id] || {}), no: Math.round(+row.number) } }
+      done.push(p.name); return
+    }
     if (!MY_SQUAD[p.id]) { miss.push(row.name + ' (nicht in deinem Kader)'); return }
     const old = state.user[p.id] || {}
     const vals = { ...old, mv: v }
     if (row.avg != null && !isNaN(row.avg)) vals.avg = Math.round(+row.avg)
+    if (row.number != null && !isNaN(row.number)) vals.no = Math.round(+row.number)
     state.user = { ...state.user, [p.id]: vals }
     done.push(p.name)
   })
-  if (mode === 'market') persist('market', 'tc-market', state.market)
+  if (mode === 'market') { persist('market', 'tc-market', state.market); persist('entries', 'tc-user', state.user) }
   else persist('entries', 'tc-user', state.user)
   return { done, miss }
 }

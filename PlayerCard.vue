@@ -1,19 +1,21 @@
 <script setup>
 import { computed } from 'vue'
 import { TEAMS } from './data.js'
-import { openPlayer } from './store.js'
+import { openPlayer, numberOf } from './store.js'
+import TeamLogo from './TeamLogo.vue'
 import { k } from './format.js'
 const props = defineProps({ x: Object })
 const t = computed(() => TEAMS[props.x.p.team])
 const tier = computed(() => (props.x.r.score >= 80 ? 'gold' : props.x.r.score >= 60 ? 'silver' : 'bronze'))
 const POS = { G: 'Goalie', D: 'Verteidiger', F: 'Stürmer' }
 const CALL = { sell: ['überbezahlt', 'bad'], cheap: ['günstig', 'good'], fair: ['fairer Preis', 'mid'] }
+const no = computed(() => numberOf(props.x.p.id))
 const call = computed(() => CALL[props.x.w.call])
 </script>
 
 <template>
   <button type="button" class="pc" :class="tier" @click="openPlayer(x.p.id)">
-    <span class="top" :style="{ background: t[1], color: t[2] }"><b>{{ x.p.team }}</b><span>{{ POS[x.p.pos] }}</span></span>
+    <span class="top" :style="{ '--tc': t[1] }"><span class="tm"><TeamLogo :team="x.p.team" :size="30" /><b>{{ x.p.team }}</b></span><span>{{ no ? '#' + no + ' · ' : '' }}{{ POS[x.p.pos] }}</span></span>
     <span class="score led">{{ x.r.score }}</span>
     <span class="nm">{{ x.p.name }}</span>
     <span class="row"><span>Höchstpreis</span><b class="num">{{ k(x.w.max) }}</b></span>
@@ -23,10 +25,11 @@ const call = computed(() => CALL[props.x.w.call])
 </template>
 
 <style scoped>
-.pc { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 7px; text-align: left; padding: 0 0 12px; border-radius: 16px; background: linear-gradient(170deg, #1a2742, #0e1627); border: 2px solid var(--edge, var(--line)); box-shadow: 0 10px 24px rgba(0, 0, 0, .35); transition: transform .2s ease, box-shadow .2s ease; }
+.pc { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 7px; text-align: left; padding: 0 0 12px; border-radius: 16px; background: linear-gradient(170deg, #1a2742, #1a2540); border: 2px solid var(--edge, var(--line)); box-shadow: 0 10px 24px rgba(0, 0, 0, .35); transition: transform .2s ease, box-shadow .2s ease; }
 .pc:hover { transform: translateY(-5px) rotate(-.8deg); box-shadow: 0 18px 34px rgba(0, 0, 0, .5); }
 .pc > :not(.top) { margin-inline: 14px; }
-.top { display: flex; justify-content: space-between; align-items: center; padding: 7px 14px; font-family: var(--head); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; font-size: .95rem; }
+.top { background: linear-gradient(90deg, color-mix(in srgb, var(--tc) 55%, #1a2540), #1a2540 85%); display: flex; justify-content: space-between; align-items: center; padding: 5px 14px; font-family: var(--head); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; font-size: .95rem; }
+.tm { display: flex; align-items: center; gap: 8px; opacity: 1 !important; }
 .top span { opacity: .85; font-weight: 600; letter-spacing: .06em; }
 .score { font-size: 3.1rem; line-height: 1; margin-top: 4px; color: var(--tier); text-shadow: 0 0 14px color-mix(in srgb, var(--tier) 55%, transparent); }
 .nm { font-family: var(--head); font-size: 1.35rem; font-weight: 700; line-height: 1.1; text-transform: uppercase; letter-spacing: .02em; min-height: 2.2em; display: flex; align-items: flex-end; }

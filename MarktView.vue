@@ -71,6 +71,6 @@ function run() { executePlan(); confirm.value = false }
 .warnbox { padding: 10px 12px; border-radius: 12px; background: var(--bad-soft); color: var(--bad); }
 .more summary { cursor: pointer; font-family: var(--head); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
 .keep { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
-.keep button { border: 1px solid var(--line); background: #0a1120; border-radius: 999px; padding: 7px 13px; min-height: 40px; }
+.keep button { border: 1px solid var(--line); background: #141d36; border-radius: 999px; padding: 7px 13px; min-height: 40px; }
 .keep button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 </style>
