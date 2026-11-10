@@ -2,8 +2,6 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:net'
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -19,7 +17,6 @@ async function freePort() {
 
 test('server serves correct MIME types and protects read-only API', { timeout: 20000 }, async () => {
   const port = await freePort()
-  const dist = path.join(root, 'dist')
   // No dist modification: exercise API routes, which do not depend on a built frontend.
   const child = spawn(process.execPath, ['server.js'], {
     cwd: root, env: { ...process.env, PORT: String(port), ANTHROPIC_API_KEY: '', APP_CODE: '' },
@@ -46,8 +43,8 @@ test('server serves correct MIME types and protects read-only API', { timeout: 2
     assert.equal(invalid.status, 405)
     const ask = await fetch(base + '/api/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt: 'test' }) })
     assert.equal(ask.status, 503)
-    const traversal = await fetch(base + '/%2e%2e/%2e%2e/secret', { redirect: 'manual' })
-    assert.ok([400, 404].includes(traversal.status))
+    const traversal = await fetch(base + '/%5csecret', { redirect: 'manual' })
+    assert.equal(traversal.status, 400)
     const missingAsset = await fetch(base + '/missing.js')
     assert.equal(missingAsset.status, 404)
     assert.match(missingAsset.headers.get('content-type') || '', /json/)
