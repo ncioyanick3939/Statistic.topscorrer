@@ -1,19 +1,13 @@
 <script setup>
-import { state, closePlayer } from './store.js'
-const tabs = [
-  ['heute', 'Heute', '⌂'],
-  ['markt', 'Markt', '⇄'],
-  ['spieler', 'Kader', '◎'],
-  ['daten', 'Daten', '▤']
-]
-function go(id) { state.tab = id; if (id === 'spieler') closePlayer() }
+import { state } from './store.js'
+import { TABS, go } from './nav.js'
 </script>
 
 <template>
-  <nav class="bar" aria-label="Hauptnavigation">
-    <button v-for="t in tabs" :key="t[0]" type="button" :class="{ on: state.tab === t[0] }" :aria-current="state.tab === t[0] ? 'page' : null" @click="go(t[0])">
-      <span class="nav-icon" aria-hidden="true">{{ t[2] }}</span>
-      <span>{{ t[1] }}</span>
+  <nav class="bar" aria-label="Bereiche">
+    <button v-for="t in TABS" :key="t.id" type="button" :class="{ on: state.tab === t.id }" :aria-current="state.tab === t.id ? 'page' : null" @click="go(t.id)">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="t.icon" /></svg>
+      <span>{{ t.label }}</span>
     </button>
   </nav>
 </template>
@@ -28,10 +22,10 @@ function go(id) { state.tab = id; if (id === 'spieler') closePlayer() }
   padding: 8px max(10px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px));
 }
 button {
-  min-width: 0; min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  min-width: 0; min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   border: 1px solid transparent; background: transparent; border-radius: 13px; padding: 5px 4px;
   color: var(--muted); font-size: .78rem; font-weight: 750;
 }
-.nav-icon { font-size: 1.2rem; line-height: 1.15; }
 button.on { color: var(--accent); background: rgba(101,213,232,.12); border-color: rgba(101,213,232,.2); }
+@media (min-width: 768px) { .bar { display: none; } }
 </style>
