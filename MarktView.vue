@@ -21,7 +21,6 @@ function run() { executePlan(); confirm.value = false }
     <div class="card kpi" :class="minus ? 'bad-b' : 'good-b'"><p class="lbl">Kontostand</p><b class="val num" :class="minus ? 'neg' : 'pos'">{{ state.cash == null ? '–' : fmt(state.cash) }}</b><p class="small">{{ minus ? 'Keine Punkte, solange im Minus' : 'Du bekommst Punkte' }}</p></div>
     <div class="card kpi"><p class="lbl">Verkauf bringt</p><b class="val num">{{ plan ? fmt(plan.sum) : '–' }}</b><p class="small">{{ plan ? plan.sold.length + ' Spieler laut Plan' : minus ? 'Mit 5 Verkäufen nicht möglich' : 'Nichts zu verkaufen' }}</p></div>
     <div class="card kpi"><p class="lbl">Punkte-Verlust</p><b class="val num">{{ plan ? '−' + Math.round(plan.loss) : '0' }}</b><p class="small">pro Spiel, von {{ Math.round(baseLineup.total) }}</p></div>
-    <div class="card kpi"><p class="lbl">Transfermarkt</p><b class="val num">{{ marketN }} <small>von 14</small></b><p class="small">Spieler eingetragen</p></div>
   </section>
   <div class="dash">
   <div class="dcol-side">
@@ -36,7 +35,7 @@ function run() { executePlan(); confirm.value = false }
         <li v-for="x in plan.sold" :key="x.p.id"><span class="nm"><b>{{ x.p.name }}</b><span class="muted small">{{ x.p.pos === 'G' ? 'Goalie' : x.p.pos === 'D' ? 'Verteidiger' : 'Stürmer' }}<template v-if="x.fc.inj"> · verletzt</template></span></span><b class="num">{{ fmt(x.w.mv) }}</b></li>
       </ul>
       <p>Das bringt <b>{{ fmt(plan.sum) }}</b>. Danach hast du <b>{{ fmt(state.cash + plan.sum) }}</b> auf dem Konto.</p>
-      <p class="small muted">Deine Aufstellung verliert dadurch rund {{ Math.round(plan.loss) }} Punkte pro Spiel (von {{ Math.round(baseLineup.total) }}). Du hast danach {{ left }} Spieler<template v-if="left <= 17"> und kaum Reserve. Fällt einer aus, bleibt eine Position leer.</template></p>
+      <p class="small muted">Danach hast du {{ left }} Spieler<template v-if="left <= 17"> und kaum Reserve</template>.</p>
       <template v-if="!confirm"><button type="button" class="btn" @click="confirm = true">Als verkauft eintragen</button></template>
       <template v-else>
         <p><b>Stimmt das? Hast du sie im Spiel verkauft?</b></p>

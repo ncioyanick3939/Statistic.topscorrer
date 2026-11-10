@@ -121,7 +121,8 @@ button.row .fc b { color:var(--accent); }
 /* Gemeinsame Bausteine der breiten Ansichten (Heute, Markt, Kader) */
 .pagehead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
 .kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-@media (min-width: 900px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 900px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 899px) { .kpis > :first-child { grid-column: 1 / -1; } }
 .kpi { gap: 4px; padding: 14px 16px; }
 .kpi .lbl { color: var(--muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
 .val { font-family: var(--head); font-size: 1.7rem; font-weight: 800; line-height: 1.1; }
@@ -139,3 +140,7 @@ button.row .fc b { color:var(--accent); }
   .dcol-main { grid-area: main; }
   .dcol-side { grid-area: side; }
 }
+
+/* Einklappbare Nebensachen */
+.more summary { cursor: pointer; font-weight: 700; color: var(--accent); padding: 4px 0; }
+.more[open] summary { margin-bottom: 8px; }

@@ -20,7 +20,6 @@ const count = (call) => ownedRated.value.filter((x) => x.w.call === call).length
     <div class="card kpi"><p class="lbl">Spieler im Kader</p><b class="val num">{{ ownedRated.length }}</b><p class="small">höchstens 26 erlaubt</p></div>
     <div class="card kpi"><p class="lbl">Teamwert</p><b class="val num">{{ mio(teamValue) }}</b><p class="small">Preis im Spiel</p></div>
     <div class="card kpi"><p class="lbl">Überbezahlt</p><b class="val num neg">{{ count('sell') }}</b><p class="small">Verkaufskandidaten</p></div>
-    <div class="card kpi"><p class="lbl">Günstig</p><b class="val num pos">{{ count('cheap') }}</b><p class="small">Behalten lohnt sich</p></div>
   </section>
 
   <div class="dash">
@@ -36,7 +35,7 @@ const count = (call) => ownedRated.value.filter((x) => x.w.call === call).length
     <div class="dcol-main">
       <section class="card">
         <h2>Mein Kader <span class="muted small">({{ mine.length }})</span></h2>
-        <p class="muted small">Sortiert nach Note. Rechts der Höchstpreis, darunter der Preis im Spiel.</p>
+        <p class="muted small">Rechts: Höchstpreis, darunter der Preis im Spiel.</p>
         <div class="list2"><PlayerRow v-for="x in mine" :key="x.p.id" :x="x" price /></div>
       </section>
     </div>

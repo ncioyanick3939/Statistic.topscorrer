@@ -50,7 +50,7 @@ const tasks = computed(() => {
   if (buy) t.push({ tone: 'good', h: 'Kaufen: ' + buy.p.name, p: 'Preis ' + fmt(buy.price) + ', du kannst bis ' + fmt(buy.w.max) + ' bieten.', b: 'Zum Markt', to: 'markt' })
   else if (!marketList.value.length) t.push({ tone: '', h: 'Transfermarkt fehlt', p: 'Mach einen Screenshot vom Transfermarkt und lade ihn im Markt hoch, dann sage ich dir, wen du kaufen sollst.', b: 'Zum Markt', to: 'markt' })
   if (age.value > 7) t.push({ tone: 'mid', h: 'Statistik ist ' + age.value + ' Tage alt', p: 'Lade den neuen Export von sihf.ch hoch, damit die Prognose stimmt.', b: 'Daten laden', to: 'daten' })
-  return t.slice(0, 5)
+  return t.slice(0, 3)
 })
 </script>
 
@@ -66,7 +66,6 @@ const tasks = computed(() => {
       <b class="val num" :class="minus ? 'neg' : 'pos'">{{ state.cash == null ? '–' : fmt(state.cash) }}</b>
       <p class="small">{{ minus ? 'Keine Punkte, solange im Minus' : state.cash == null ? 'Kontostand eintragen' : 'Im Plus, du bekommst Punkte' }}</p>
     </div>
-    <div class="card kpi"><p class="lbl">Teamwert</p><b class="val num">{{ mio(teamValue) }}</b><p class="small">{{ ownedRated.length }} Spieler im Kader</p></div>
     <div class="card kpi"><p class="lbl">Erwartete Punkte</p><b class="val num">{{ Math.round(L.total) }}</b><p class="small">≈ {{ fmt(L.total * 50) }} Franken am {{ dayLabel(activeDay) }}</p></div>
     <div class="card kpi"><p class="lbl">Spielen am Tag</p><b class="val num">{{ L.playing }} <small>von 16</small></b><p class="small">{{ L.imports }} von 6 Imports</p></div>
   </section>
@@ -89,16 +88,16 @@ const tasks = computed(() => {
         <div class="chips" role="group" aria-label="Spieltag wählen">
           <button v-for="d in days" :key="d" type="button" :class="{ on: activeDay === d }" @click="state.day = d">{{ dayLabel(d) }} <small>{{ playN(d) }}</small></button>
         </div>
-        <p class="small muted">Die Zahl zeigt, wie viele deiner Spieler an dem Tag spielen.</p>
-        <ul v-if="games.length" class="games">
+        <details v-if="games.length" class="more"><summary>{{ games.length }} Spiele am Tag</summary>
+        <ul class="games">
           <li v-for="g in games" :key="g.h + g.a"><span><b>{{ g.h }}</b> – <b>{{ g.a }}</b></span><span class="chip" :class="g.n ? 'good' : ''">{{ g.n ? g.n + ' von dir' : '–' }}</span></li>
-        </ul>
+        </ul></details>
         <p v-else class="muted">Spielplan nicht verfügbar.</p>
       </section>
 
       <section class="card">
         <h2>Spiele in 7 Tagen</h2>
-        <p class="small muted">Mehr Spiele bedeuten mehr Punkte. Deine Spieler, nach Zahl der Spiele:</p>
+        <p class="small muted">Mehr Spiele, mehr Punkte.</p>
         <ul class="wk">
           <li v-for="g in weekGroups" :key="g.n"><span class="chip" :class="weekTone(g.n)">{{ g.n }} {{ g.n === 1 ? 'Spiel' : 'Spiele' }}</span><span class="small">{{ g.names }}</span></li>
         </ul>
@@ -109,7 +108,7 @@ const tasks = computed(() => {
     <div class="dcol-main">
       <section class="card">
         <div class="kh">
-          <h2>Mein Kader <span class="muted small">({{ ownedRated.length }})</span></h2>
+          <div><h2>Mein Kader <span class="muted small">({{ ownedRated.length }})</span></h2><p class="small muted">Zahl = erwartete Punkte pro Spiel</p></div>
           <div class="seg" role="group" aria-label="Ansicht">
             <button type="button" :class="{ on: view === 'rink' }" @click="view = 'rink'">Eisfeld</button>
             <button type="button" :class="{ on: view === 'list' }" @click="view = 'list'">Liste</button>
@@ -129,15 +128,14 @@ const tasks = computed(() => {
             </ul>
           </template>
         </template>
-        <template v-if="L.bench.length">
-          <h3>Auf der Bank</h3>
+        <details v-if="L.bench.length" class="more">
+          <summary>Auf der Bank ({{ L.bench.length }})</summary>
           <ul class="list">
             <li v-for="e in L.bench" :key="e.x.p.id" class="off">
               <button type="button" @click="openPlayer(e.x.p.id)"><span class="nm"><b>{{ e.x.p.name }}</b><span class="muted small">{{ info(e.x) }}</span></span><span class="v num">{{ e.v ? e.v : '–' }}</span></button>
             </li>
           </ul>
-        </template>
-        <p class="small muted">Die Zahl ist der Punkteschnitt pro Spiel aus dem Topscorer-Spiel, bei Formschwäche oder Verletzung angepasst. Wer nicht spielt, bekommt 0.</p>
+        </details>
       </section>
 
       <details class="card acc">
