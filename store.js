@@ -29,7 +29,7 @@ function applySquad(obj) {
 }
 
 export const state = reactive({
-  tab: 'heute', day: '', keep: local.get('tc-keep', { 'Schmid Sandro|FRI': 1, 'Kurashev Philipp|LHC': 1 }), query: '', current: null,
+  tab: 'heute', day: '', force: local.get('tc-force', {}), keep: local.get('tc-keep', { 'Schmid Sandro|FRI': 1, 'Kurashev Philipp|LHC': 1 }), query: '', current: null,
   data: first, user: local.get('tc-user', {}), cash: (local.get('tc-squad', null) || {}).cash ?? -1770000, market: local.get('tc-market', {}),
   pos: 'S', team: '', mine: false, sortKey: 'pts', sortDir: -1, shown: 25,
   message: '', messageKind: '', cloud: false, ai: false, aiMode: '', needsCode: false, hasCode: !!local.get('tc-code', '')
@@ -227,7 +227,24 @@ export const ownedRated = computed(() => rated.value.filter((x) => MY_SQUAD[x.p.
 export const week = computed(() => weekGames(ctx.value.today))
 export const days = computed(() => matchDays(ctx.value.today))
 export const activeDay = computed(() => (days.value.includes(state.day) ? state.day : days.value[0] || ''))
-export const todayLineup = computed(() => lineup(ownedRated.value, activeDay.value || null))
+export const todayLineup = computed(() => lineup(ownedRated.value, activeDay.value || null, state.force[activeDay.value] || {}))
+export const forceCount = computed(() => Object.keys(state.force[activeDay.value] || {}).length)
+const isImp = (id) => MY_SQUAD[id] && MY_SQUAD[id][4] === 1
+// Wechsel von Hand: ein Spieler vom Eis gegen einen von der Bank (gleiche Position, höchstens 6 Imports)
+export function swapPlayers(iceId, benchId) {
+  const d = activeDay.value
+  if (!d) return { ok: false, msg: 'Kein Spieltag gewählt.' }
+  if (isImp(benchId) && !isImp(iceId) && todayLineup.value.imports >= 6) return { ok: false, msg: 'Höchstens 6 Imports auf dem Eis.' }
+  state.force = { ...state.force, [d]: { ...(state.force[d] || {}), [iceId]: 'bench', [benchId]: 'ice' } }
+  local.set('tc-force', state.force)
+  return { ok: true }
+}
+export function resetForce() {
+  const f = { ...state.force }
+  delete f[activeDay.value]
+  state.force = f
+  local.set('tc-force', f)
+}
 export const baseLineup = computed(() => lineup(ownedRated.value))
 export const plan = computed(() => (state.cash != null && state.cash < 0 ? sellPlan(ownedRated.value, state.keep, -state.cash) : null))
 export function toggleKeep(id) { const m = { ...state.keep }; if (m[id]) delete m[id]; else m[id] = 1; state.keep = m; persist('keep', 'tc-keep', m) }

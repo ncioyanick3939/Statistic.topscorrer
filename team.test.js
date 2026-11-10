@@ -37,3 +37,12 @@ test('Spiele pro Team in 7 Tagen laut Spielplan', () => {
   assert.equal(w.HCL, 3)
   assert.equal(w.ZSC, 2)
 })
+test('Wechsel von Hand: erzwungene Bank und erzwungenes Eis', () => {
+  const list = squad()
+  const best = lineup(list).got.F[0].x
+  const weakest = list.filter((x) => x.p.pos === 'F').sort((a, b) => a.w.avg - b.w.avg)[0]
+  const l = lineup(list, null, { [best.p.id]: 'bench', [weakest.p.id]: 'ice' })
+  assert.ok(l.bench.some((e) => e.x === best))
+  assert.ok(l.got.F.some((e) => e.x === weakest))
+  assert.equal(l.got.F.length, 9)
+})

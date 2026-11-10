@@ -25,15 +25,17 @@ export function value(x, date = null) {
 }
 
 // Beste Aufstellung: 1 Goalie, 6 Verteidiger, 9 Stürmer, höchstens 6 Imports.
-export function lineup(list, date = null) {
+// force: {id: 'ice' | 'bench'} sind Wechsel von Hand und gehen vor.
+export function lineup(list, date = null, force = {}) {
   const got = { G: [], D: [], F: [] }
   const bench = []
   let imports = 0
-  list.map((x) => ({ x, v: value(x, date) })).sort((a, b) => b.v - a.v || (isImport(a.x) ? 1 : 0) - (isImport(b.x) ? 1 : 0)).forEach((e) => {
-    const pos = e.x.p.pos
-    const imp = isImport(e.x)
-    if (got[pos].length < SLOTS[pos] && !(imp && imports >= 6)) { got[pos].push(e); if (imp) imports++ } else bench.push(e)
-  })
+  list.map((x) => { const v = value(x, date); return { x, v, s: force[x.p.id] === 'ice' ? 1e6 : v, out: force[x.p.id] === 'bench' } })
+    .sort((a, b) => b.s - a.s || (isImport(a.x) ? 1 : 0) - (isImport(b.x) ? 1 : 0)).forEach((e) => {
+      const pos = e.x.p.pos
+      const imp = isImport(e.x)
+      if (!e.out && got[pos].length < SLOTS[pos] && !(imp && imports >= 6)) { got[pos].push(e); if (imp) imports++ } else bench.push(e)
+    })
   const total = Object.values(got).flat().reduce((s, e) => s + e.v, 0)
   const missing = { G: SLOTS.G - got.G.length, D: SLOTS.D - got.D.length, F: SLOTS.F - got.F.length }
   return { got, bench, total, missing, imports, playing: Object.values(got).flat().filter((e) => e.v > 0).length }

@@ -1,47 +1,37 @@
 <script setup>
-import { computed } from 'vue'
-import { state, hits, rated, ownedRated, openPlayer, stand, ctx } from './store.js'
-import { mio } from './format.js'
-import PlayerRow from './PlayerRow.vue'
-const found = computed(() => hits.value.slice(0, 8).map((p) => rated.value.find((x) => x.p.id === p.id)))
+import { computed, ref } from 'vue'
+import { state, hits, rated, ownedRated, openPlayer, ctx } from './store.js'
+import PlayerCard from './PlayerCard.vue'
+const found = computed(() => hits.value.slice(0, 12).map((p) => rated.value.find((x) => x.p.id === p.id)).filter(Boolean))
 function onInput() { if (hits.value.length === 1) openPlayer(hits.value[0].id) }
-const mine = computed(() => ownedRated.value.slice().sort((a, b) => b.r.score - a.r.score))
-const teamValue = computed(() => ownedRated.value.reduce((s, x) => s + (x.w.mv || 0), 0))
-const count = (call) => ownedRated.value.filter((x) => x.w.call === call).length
+const filter = ref('all')
+const FILTERS = [['all', 'Alle'], ['F', 'Stürmer'], ['D', 'Verteidiger'], ['G', 'Goalies'], ['sell', 'Verkaufen']]
+const mine = computed(() => ownedRated.value.filter((x) => filter.value === 'all' || (filter.value === 'sell' ? x.w.call === 'sell' : x.p.pos === filter.value)).sort((a, b) => b.r.score - a.r.score))
 </script>
 
 <template>
-  <header class="pagehead">
-    <div><h1>Kader</h1><p class="muted">Dein Team im Vergleich: Leistung, Form und Preis</p></div>
-    <span class="chip good">Statistik vom {{ stand }}</span>
-  </header>
+  <header class="hd"><h1>Karten</h1><p class="muted">Dein Team als Sammlung. Gold ab Note 80, Silber ab 60.</p></header>
 
-  <section class="kpis" aria-label="Kennzahlen">
-    <div class="card kpi"><p class="lbl">Spieler im Kader</p><b class="val num">{{ ownedRated.length }}</b><p class="small">höchstens 26 erlaubt</p></div>
-    <div class="card kpi"><p class="lbl">Teamwert</p><b class="val num">{{ mio(teamValue) }}</b><p class="small">Preis im Spiel</p></div>
-    <div class="card kpi"><p class="lbl">Überbezahlt</p><b class="val num neg">{{ count('sell') }}</b><p class="small">Verkaufskandidaten</p></div>
-  </section>
-
-  <div class="dash">
-    <div class="dcol-side">
-      <section class="card">
-        <h2>Spieler suchen</h2>
-        <input id="q" type="search" autocomplete="off" placeholder="Name eingeben, z. B. Malgin" v-model="state.query" @input="onInput" aria-label="Spielername" />
-        <p v-if="state.query.trim().length >= 2 && !hits.length" class="muted">Kein Spieler mit diesem Namen gefunden.</p>
-        <div v-if="found.length" class="list"><PlayerRow v-for="x in found" :key="x.p.id" :x="x" price /></div>
-        <p class="small muted">{{ ctx.players.length }} Spieler in der Liga, Statistik vom {{ stand }}.</p>
-      </section>
-    </div>
-    <div class="dcol-main">
-      <section class="card">
-        <h2>Mein Kader <span class="muted small">({{ mine.length }})</span></h2>
-        <p class="muted small">Rechts: Höchstpreis, darunter der Preis im Spiel.</p>
-        <div class="list2"><PlayerRow v-for="x in mine" :key="x.p.id" :x="x" price /></div>
-      </section>
-    </div>
+  <div class="search">
+    <input id="q" type="search" autocomplete="off" :placeholder="'Spieler suchen, z. B. Malgin (' + ctx.players.length + ' in der Liga)'" v-model="state.query" @input="onInput" aria-label="Spielername" />
   </div>
+  <p v-if="state.query.trim().length >= 2 && !hits.length" class="muted">Kein Spieler mit diesem Namen gefunden.</p>
+  <section v-if="found.length" aria-label="Suchergebnisse"><div class="grid"><PlayerCard v-for="x in found" :key="x.p.id" :x="x" /></div></section>
+
+  <template v-else>
+    <div class="chips" role="group" aria-label="Filter">
+      <button v-for="f in FILTERS" :key="f[0]" type="button" :class="{ on: filter === f[0] }" @click="filter = f[0]">{{ f[1] }}</button>
+    </div>
+    <div class="grid"><PlayerCard v-for="x in mine" :key="x.p.id" :x="x" /></div>
+    <p v-if="!mine.length" class="muted">Keine Spieler in diesem Filter.</p>
+  </template>
 </template>
 
 <style scoped>
-.list { display: flex; flex-direction: column; gap: 8px; }
+.hd { display: flex; flex-direction: column; gap: 4px; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.chips button { flex: 0 0 auto; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 8px 16px; font-family: var(--head); font-size: 1.05rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.chips button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+@media (min-width: 640px) { .grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; } }
 </style>

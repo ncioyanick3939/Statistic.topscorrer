@@ -1,8 +1,14 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, reactive } from 'vue'
 import { TEAMS } from './data.js'
 import ImportShot from './ImportShot.vue'
 import { state, ctx, marketList, baseLineup, addMarket, removeMarket, clearMarket, openPlayer } from './store.js'
+import { fmt } from './format.js'
+// Gebotsrechner: Schieber zwischen Marktwert und etwas über dem Höchstpreis
+const bids = reactive({})
+const top = (x) => Math.round((x.w.max != null ? Math.max(x.w.max * 1.25, x.price * 1.2) : x.price * 1.5) / 1000) * 1000
+const bidOf = (x) => bids[x.p.id] ?? x.price
+const verdict = (x) => { const b = bidOf(x); if (x.w.max == null) return ['mid', 'unklar']; return b <= x.w.max * 0.92 ? ['good', 'Schnäppchen'] : b <= x.w.max ? ['mid', 'fair'] : ['bad', 'zu teuer'] }
 const q = ref('')
 const picked = ref(null)
 const price = ref('')
@@ -54,6 +60,11 @@ function advice(x) {
           <button type="button" class="x" :aria-label="x.p.name + ' entfernen'" @click="removeMarket(x.p.id)">×</button>
         </div>
         <p class="small muted">{{ advice(x).sub }}</p>
+        <div v-if="x.price" class="bid">
+          <div class="bid-h"><span class="small muted">Dein Gebot</span><b class="led">{{ fmt(bidOf(x)) }}</b><span class="chip" :class="verdict(x)[0]">{{ verdict(x)[1] }}</span></div>
+          <input type="range" :min="x.price" :max="top(x)" step="1000" :value="bidOf(x)" :aria-label="'Gebot für ' + x.p.name" @input="bids[x.p.id] = +$event.target.value" />
+          <p class="small muted">Konto danach: <b>{{ state.cash == null ? '–' : fmt(state.cash - bidOf(x)) }}</b><template v-if="x.w.max != null"> · Höchstpreis {{ fmt(x.w.max) }}</template></p>
+        </div>
       </li>
     </ul>
     <button v-if="marketList.length" type="button" class="link" @click="clearMarket">Liste leeren (neuer Tag)</button>
@@ -72,4 +83,8 @@ function advice(x) {
 .nm { background: none; border: 0; padding: 0; text-align: left; display: flex; flex-direction: column; min-width: 0; }
 .x { background: none; border: 0; font-size: 1.5rem; color: var(--muted); }
 .chip { white-space: nowrap; }
+.bid { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 12px; background: #0a1120; border: 1px solid var(--line); }
+.bid-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.bid .led { color: var(--led); font-size: 1.2rem; }
+.bid input[type=range] { padding: 0; accent-color: var(--accent); }
 </style>
