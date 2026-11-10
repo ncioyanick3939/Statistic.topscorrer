@@ -25,18 +25,22 @@ const send = (res, status, obj) => { res.writeHead(status, { 'Content-Type': 'ap
 
 async function ask(req, res) {
   let body = ''
-  for await (const c of req) { body += c; if (body.length > 60000) return send(res, 413, { error: 'zu gross' }) }
+  for await (const c of req) { body += c; if (body.length > 6e6) return send(res, 413, { error: 'zu gross' }) }
   let data
   try { data = JSON.parse(body) } catch (e) { return send(res, 400, { error: 'ungültig' }) }
   if (CODE && data.code !== CODE) return send(res, 401, { error: 'bad_code' })
   const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim()
   if (limited(ip)) return send(res, 429, { error: 'rate_limited' })
-  if (typeof data.prompt !== 'string' || !data.prompt.trim()) return send(res, 400, { error: 'leer' })
+  if (typeof data.prompt !== 'string' || !data.prompt.trim() || data.prompt.length > 60000) return send(res, 400, { error: 'leer' })
+  const img = Array.isArray(data.images) ? data.images[0] : null
+  const content = img && typeof img.data === 'string' && /^image\/(jpeg|png|webp)$/.test(img.type)
+    ? [{ type: 'image', source: { type: 'base64', media_type: img.type, data: img.data } }, { type: 'text', text: data.prompt }]
+    : data.prompt
   try {
     const r = await fetch(URL_API, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: MODEL, max_tokens: 700, messages: [{ role: 'user', content: data.prompt }] })
+      body: JSON.stringify({ model: MODEL, max_tokens: 700, messages: [{ role: 'user', content }] })
     })
     const j = await r.json()
     if (!r.ok) { console.error('API', r.status, JSON.stringify(j).slice(0, 300)); return send(res, 502, { error: 'api' }) }

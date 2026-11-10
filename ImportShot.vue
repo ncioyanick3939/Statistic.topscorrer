@@ -19,7 +19,7 @@ async function onFile(e) {
     }
   } catch (err) {
     bad.value = true
-    msg.value = err && err.code === 'no_images' ? 'Bilder lesen ist hier nicht freigegeben.' : err && err.code === 'rate_limited' ? 'Zu viele Anfragen, bitte kurz warten.' : 'Das Lesen hat nicht geklappt. Bitte nochmals versuchen.'
+    msg.value = err && err.code === 'bad_code' ? 'Der Zugangscode fehlt oder stimmt nicht. Gib ihn bei «Frag die KI» ein.' : err && err.code === 'no_images' ? 'Bilder lesen ist hier nicht freigegeben.' : err && err.code === 'rate_limited' ? 'Zu viele Anfragen, bitte kurz warten.' : 'Das Lesen hat nicht geklappt. Bitte nochmals versuchen.'
   }
   busy.value = false
   e.target.value = ''

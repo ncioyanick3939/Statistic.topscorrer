@@ -189,15 +189,24 @@ function aiData(playerId) {
   const mk = marketList.value.length ? '\nHEUTE AUF DEM TRANSFERMARKT (nur diese sind kaufbar):\n' + marketList.value.map((x) => line(x) + '; Marktwert ' + k(x.price)).join('\n') : ''
   return 'Statistik-Stand: ' + chDate(state.data.date) + '. Kontostand im Spiel: ' + (state.cash == null ? 'unbekannt' : state.cash) + '.\nDEIN KADER:\n' + mine + '\nBESTE FELDSPIELER ZUM KAUFEN (nicht im Kader):\n' + pool + '\nGOALIES ZUM KAUFEN:\n' + goalies + mk + focus
 }
+async function serverAsk(prompt, images) {
+  const r = await fetch('/api/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt, images, code: local.get('tc-code', '') }) })
+  if (r.status === 401) { state.hasCode = false; throw { code: 'bad_code' } }
+  if (r.status === 429) throw { code: 'rate_limited' }
+  if (!r.ok) throw new Error('api')
+  return (await r.json()).text
+}
+async function shrink(file) {
+  const bmp = await createImageBitmap(file)
+  const f = Math.min(1, 1600 / Math.max(bmp.width, bmp.height))
+  const c = document.createElement('canvas')
+  c.width = Math.round(bmp.width * f); c.height = Math.round(bmp.height * f)
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height)
+  return { type: 'image/jpeg', data: c.toDataURL('image/jpeg', 0.82).split(',')[1] }
+}
 export async function askAI(question, playerId, onText) {
   const prompt = RULES + '\n\n' + 'Du hilfst einem Schweizer Fan beim Fantasy-Spiel «Topscorer» zur National League 2026/27. Antworte auf Deutsch (Schweizer Rechtschreibung, kein ß), kurz (höchstens 150 Wörter), ohne Markdown-Zeichen, mit klaren Namen und Zahlen. Stütze dich nur auf die Daten unten. Der Höchstpreis ist eine Schätzung aus dem Spiel-Schnitt. Wenn etwas fehlt oder unsicher ist, sag es offen. Gib keine Garantien.\n\n' + aiData(playerId) + '\n\nFRAGE: ' + question
-  if (state.aiMode === 'server') {
-    const r = await fetch('/api/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt, code: local.get('tc-code', '') }) })
-    if (r.status === 401) { state.hasCode = false; throw { code: 'bad_code' } }
-    if (r.status === 429) throw { code: 'rate_limited' }
-    if (!r.ok) throw new Error('api')
-    return (await r.json()).text
-  }
+  if (state.aiMode === 'server') return serverAsk(prompt)
   const r = await sample(prompt, { onText: ({ text }) => onText && onText(text), modelTier: 'default', cache: false })
   return r.text
 }
@@ -223,13 +232,19 @@ export function toggleKeep(id) { const m = { ...state.keep }; if (m[id]) delete 
 export function executePlan() { if (plan.value) plan.value.sold.map((x) => x.p.id).forEach((id) => sellPlayer(id)) }
 
 // ---- Screenshot lesen (nur in der Claude-Version) ----
-export async function readShot(file, mode) {
-  if (!sample) throw { code: 'no_ai' }
-  try { const lim = sample.limits ? await sample.limits() : null; if (lim && lim.images === false) throw { code: 'no_images' } } catch (e) { if (e && e.code === 'no_images') throw e }
+function shotPrompt(mode) {
   const what = mode === 'market'
     ? 'Das Bild zeigt den Transfermarkt der Fantasy-App Topscorer. Lies jeden Spieler mit Vorname Nachname und Marktwert in Franken ab.'
     : 'Das Bild zeigt den Kader der Fantasy-App Topscorer. Lies jeden Spieler mit Vorname Nachname, Marktwert in Franken und Punkteschnitt (Ø) ab.'
-  const prompt = what + ' Antworte NUR mit einem JSON-Array, ohne Text davor oder danach, in der Form [{"name":"Vorname Nachname","value":123456,"avg":85}]. value ist eine ganze Zahl in Franken ohne Hochkomma. avg weglassen, wenn nicht sichtbar. Erfinde nichts, lass unlesbare Spieler weg.'
+  return what + ' Antworte NUR mit einem JSON-Array, ohne Text davor oder danach, in der Form [{"name":"Vorname Nachname","value":123456,"avg":85}]. value ist eine ganze Zahl in Franken ohne Hochkomma. avg weglassen, wenn nicht sichtbar. Erfinde nichts, lass unlesbare Spieler weg.'
+}
+export async function readShot(file, mode) {
+  if (!sample && state.aiMode !== 'server') throw { code: 'no_ai' }
+  if (state.aiMode === 'server') {
+    return parseShotRows(await serverAsk(shotPrompt(mode), [await shrink(file)]))
+  }
+  try { const lim = sample.limits ? await sample.limits() : null; if (lim && lim.images === false) throw { code: 'no_images' } } catch (e) { if (e && e.code === 'no_images') throw e }
+  const prompt = shotPrompt(mode)
   const r = await sample(prompt, { images: [file], modelTier: 'default', cache: false })
   return parseShotRows(r.text)
 }

@@ -26,7 +26,7 @@ const info = (x) => { const g = gameOn(x.p.team, activeDay.value); return g ? (g
     </div>
     <p v-if="minus">Du bekommst an Spieltagen <b>keine Punkte</b>, solange das Konto im Minus ist.</p>
     <p v-else-if="state.cash != null">Dein Konto ist im Plus. Du bekommst Punkte.</p>
-    <ImportShot v-if="state.ai && state.aiMode === 'claude'" mode="squad" />
+    <ImportShot v-if="state.ai" mode="squad" />
     <div class="edit"><label for="cash">Kontostand ändern</label><input id="cash" type="number" step="1000" :value="state.cash" @change="setCash($event.target.value)" /></div>
   </section>
 
