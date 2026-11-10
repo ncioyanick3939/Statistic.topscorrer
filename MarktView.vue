@@ -12,6 +12,10 @@ function run() { executePlan(); confirm.value = false }
 </script>
 
 <template>
+  <header class="view-heading">
+    <div><p class="eyebrow">STRATEGIE · TRANSFERS</p><h1>Transfer-Center</h1><p class="small muted">Kaderwert verbessern, Budget im Griff behalten.</p></div>
+    <span class="heading-mark" aria-hidden="true">⇄</span>
+  </header>
   <section class="card">
     <h2>Verkaufen</h2>
     <template v-if="!minus">
